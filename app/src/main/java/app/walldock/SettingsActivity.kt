@@ -64,7 +64,7 @@ class SettingsActivity : Activity() {
             Prefs.HANDLE_BOTTOM_RIGHT to "En bas à droite",
             Prefs.HANDLE_BOTTOM_LEFT to "En bas à gauche",
             Prefs.HANDLE_RIGHT_MIDDLE to "Au milieu du bord droit",
-            Prefs.HANDLE_HIDDEN to "Cachée : glisser depuis le bord droit vers la gauche"
+            Prefs.HANDLE_HIDDEN to "Cachée : glisser vers la gauche depuis le milieu du bord droit"
         )
         for ((value, text) in handleChoices) {
             val choice = RadioButton(this)

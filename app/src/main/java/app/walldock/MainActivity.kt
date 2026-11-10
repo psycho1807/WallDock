@@ -3,6 +3,7 @@ package app.walldock
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -108,7 +109,14 @@ class MainActivity : Activity() {
             true
         }
         edgeStrip.visibility = View.GONE
-        root.addView(edgeStrip, FrameLayout.LayoutParams(dp(14), MATCH_PARENT, Gravity.END))
+        // Zone de 200 dp au milieu du bord droit : c'est le maximum qu'Android accepte
+        // de soustraire à son geste « Retour » (glissement depuis le bord).
+        edgeStrip.addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                view.systemGestureExclusionRects = listOf(Rect(0, 0, view.width, view.height))
+            }
+        }
+        root.addView(edgeStrip, FrameLayout.LayoutParams(dp(28), dp(200), Gravity.END or Gravity.CENTER_VERTICAL))
 
         // Bandeau d'alerte si l'autorisation « affichage par-dessus » manque
         overlayWarning = TextView(this)
