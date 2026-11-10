@@ -1,6 +1,5 @@
 package app.walldock
 
-import android.accessibilityservice.AccessibilityService
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -88,17 +87,7 @@ class ReturnService : Service() {
     }
 
     private fun returnToDashboard() {
-        // 1) Ouverture directe : autorisée tant que le bouton flottant est visible
-        try {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
-        } catch (e: Exception) {
-            // Bloqué par Android : on tente le bouton Accueil virtuel ci-dessous
-        }
-        // 2) Bouton Accueil virtuel (si la détection d'activité est active) :
-        //    ramène à WallDock quand il est l'écran d'accueil
-        InteractionService.instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+        Dashboard.bringToFront(this)
     }
 
     private fun showOverlay() {

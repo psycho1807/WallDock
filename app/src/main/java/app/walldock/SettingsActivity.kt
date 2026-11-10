@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -20,6 +21,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
+import java.net.Inet4Address
 
 /** Réglages : adresse HA, code, délai, autorisations et choix des applis du dock. */
 class SettingsActivity : Activity() {
@@ -30,6 +32,7 @@ class SettingsActivity : Activity() {
     private lateinit var delayField: EditText
     private lateinit var statusText: TextView
     private lateinit var handleGroup: RadioGroup
+    private lateinit var haStatusText: TextView
 
     private val dockSelection = mutableListOf<String>()
     private val videoSelection = mutableSetOf<String>()
@@ -97,6 +100,13 @@ class SettingsActivity : Activity() {
             open(Intent(Settings.ACTION_HOME_SETTINGS))
         })
 
+        column.addView(heading("Home Assistant", 18f))
+        haStatusText = TextView(this)
+        haStatusText.setTextColor(0xFFB0C4E0.toInt())
+        haStatusText.textSize = 14f
+        haStatusText.setLineSpacing(0f, 1.3f)
+        column.addView(haStatusText)
+
         column.addView(heading("Applis du dock", 18f))
         column.addView(label("« Dock » : l’appli apparaît dans le dock. « Vidéo » : pas de retour automatique tant qu’elle est ouverte."))
         for (app in Apps.listLaunchable(this)) column.addView(appRow(app))
@@ -112,6 +122,7 @@ class SettingsActivity : Activity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
+        updateHaStatus()
     }
 
     @Deprecated("Deprecated in Java")
@@ -156,6 +167,29 @@ class SettingsActivity : Activity() {
             (if (overlay) "✅ Affichage par-dessus les autres applis" else "⚠️ Affichage par-dessus les autres applis (indispensable au retour automatique)"),
             (if (activity) "✅ Détection d’activité" else "➖ Détection d’activité (sans elle : retour après un délai fixe)")
         ).joinToString("\n")
+    }
+
+    private fun updateHaStatus() {
+        val service = ApiService.instance
+        val error = AppState.apiError
+        val ip = localIpAddress() ?: "adresse inconnue"
+        haStatusText.text = when {
+            error != null -> "⚠️ $error"
+            service == null -> "➖ Service non démarré"
+            service.connectedClients() > 0 -> "✅ Connecté à Home Assistant\nAppareil : ${service.friendlyName} (${service.deviceName})"
+            else -> "⏳ En attente de Home Assistant\n" +
+                "Home Assistant devrait proposer « ${service.friendlyName} » dans Paramètres → Appareils et services.\n" +
+                "Sinon : Ajouter une intégration → ESPHome → hôte $ip, port 6053."
+        }
+    }
+
+    private fun localIpAddress(): String? {
+        val connectivity = getSystemService(ConnectivityManager::class.java) ?: return null
+        val properties = connectivity.getLinkProperties(connectivity.activeNetwork) ?: return null
+        return properties.linkAddresses
+            .map { it.address }
+            .firstOrNull { it is Inet4Address && !it.isLoopbackAddress }
+            ?.hostAddress
     }
 
     private fun isDefaultHome(): Boolean {

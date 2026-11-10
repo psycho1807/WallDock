@@ -57,6 +57,22 @@ object Apps {
     }
 }
 
+object Dashboard {
+    /** Ramène le tableau de bord WallDock au premier plan. */
+    fun bringToFront(context: Context) {
+        // 1) Ouverture directe : autorisée tant qu'une fenêtre WallDock est visible (bouton ⌂)
+        try {
+            val intent = Intent(context, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // Bloqué par Android : le bouton Accueil virtuel ci-dessous prend le relais
+        }
+        // 2) Bouton Accueil virtuel (détection d'activité active) : ramène à WallDock s'il est l'écran d'accueil
+        InteractionService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+    }
+}
+
 object Pin {
     /** Demande le code administrateur, puis lance [onSuccess] s'il est correct. */
     fun ask(activity: Activity, prefs: Prefs, onSuccess: () -> Unit) {

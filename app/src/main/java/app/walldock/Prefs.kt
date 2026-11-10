@@ -68,4 +68,29 @@ object AppState {
     /** Vrai quand le service d'accessibilité (détection d'activité) est actif. */
     @Volatile
     var accessibilityActive = false
+
+    /** Écran « allumé » (faux = écran noir, la tablette peut se mettre en veille). Piloté par HA. */
+    @Volatile
+    var screenOn = true
+
+    /** Luminosité demandée par HA, en % (1–100), ou -1 pour la luminosité système. */
+    @Volatile
+    var brightness = -1f
+
+    /** Nom de l'appli au premier plan, remonté à HA. */
+    @Volatile
+    var currentApp = "Tableau de bord"
+
+    /** Message d'erreur du serveur Home Assistant, ou null si tout va bien. */
+    @Volatile
+    var apiError: String? = null
+
+    /** Écran principal, quand il existe : appliquer l'écran et la luminosité, recharger la page. */
+    @Volatile
+    var controller: DashboardController? = null
+}
+
+interface DashboardController {
+    fun applyScreen()
+    fun reloadDashboard()
 }

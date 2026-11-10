@@ -11,8 +11,12 @@ android {
         applicationId = "app.walldock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.1.3"
+        versionCode = 5
+        versionName = "0.2.0"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     // Clé de test fixe : chaque APK compilé par GitHub peut s'installer par-dessus le précédent

@@ -33,7 +33,7 @@ import android.widget.TextView
  * Écran principal : le tableau de bord Home Assistant en plein écran,
  * avec un dock d'applis qui s'ouvre depuis la poignée en bas à droite.
  */
-class MainActivity : Activity() {
+class MainActivity : Activity(), DashboardController {
 
     private lateinit var prefs: Prefs
     private lateinit var web: WebView
@@ -42,6 +42,7 @@ class MainActivity : Activity() {
     private lateinit var handle: TextView
     private lateinit var edgeStrip: View
     private lateinit var overlayWarning: TextView
+    private lateinit var blackCover: View
 
     private var loadedUrl = ""
     private val handler = Handler(Looper.getMainLooper())
@@ -134,14 +135,30 @@ class MainActivity : Activity() {
         }
         root.addView(overlayWarning, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.TOP))
 
+        // Écran noir quand Home Assistant « éteint » l'écran ; un toucher le rallume
+        blackCover = View(this)
+        blackCover.setBackgroundColor(Color.BLACK)
+        blackCover.visibility = View.GONE
+        blackCover.setOnClickListener {
+            AppState.screenOn = true
+            applyScreen()
+            ApiService.instance?.reportScreen()
+        }
+        root.addView(blackCover, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
         setContentView(root)
+        ApiService.start(this)
     }
 
     override fun onResume() {
         super.onResume()
         AppState.dashboardVisible = true
+        AppState.controller = this
+        AppState.currentApp = "Tableau de bord"
+        ApiService.instance?.reportCurrentApp()
         stopService(Intent(this, ReturnService::class.java))
         enterImmersive()
+        applyScreen()
 
         if (!prefs.isConfigured) {
             // Premier lancement : pas encore de code, on ouvre directement les réglages
@@ -191,7 +208,32 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    /** Applique l'état d'écran et la luminosité demandés par Home Assistant. */
+    override fun applyScreen() {
+        val params = window.attributes
+        if (AppState.screenOn) {
+            blackCover.visibility = View.GONE
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            params.screenBrightness = if (AppState.brightness < 0) {
+                WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            } else {
+                (AppState.brightness / 100f).coerceIn(0.01f, 1f)
+            }
+        } else {
+            // Écran noir au minimum de luminosité ; sans « garder allumé », Android peut le mettre en veille
+            blackCover.visibility = View.VISIBLE
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            params.screenBrightness = 0.01f
+        }
+        window.attributes = params
+    }
+
+    override fun reloadDashboard() {
+        web.reload()
+    }
+
     override fun onDestroy() {
+        if (AppState.controller === this) AppState.controller = null
         handler.removeCallbacks(autoHideDock)
         web.destroy()
         super.onDestroy()
@@ -237,6 +279,8 @@ class MainActivity : Activity() {
         }
         val seconds = if (packageName in prefs.videoApps) 0 else prefs.returnSeconds
         ReturnService.start(this, packageName, seconds)
+        AppState.currentApp = Apps.load(this, packageName)?.label ?: packageName
+        ApiService.instance?.reportCurrentApp()
     }
 
     private fun setDockVisible(visible: Boolean) {
