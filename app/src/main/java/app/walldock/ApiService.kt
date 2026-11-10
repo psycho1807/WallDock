@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.BatteryManager
@@ -190,6 +191,9 @@ class ApiService : Service(), EsphomeServer.Handler {
     // ----- Annonce sur le réseau pour la découverte automatique par Home Assistant -----
 
     private fun registerMdns(mac: String) {
+        // Dans l'émulateur Android (réseau 10.0.2.x), l'adresse annoncée est injoignable depuis
+        // Home Assistant et écraserait l'adresse saisie à la main : on ne s'annonce pas.
+        if (isEmulatorNetwork()) return
         val manager = getSystemService(NsdManager::class.java) ?: return
         val service = NsdServiceInfo()
         service.serviceName = deviceName
@@ -213,6 +217,12 @@ class ApiService : Service(), EsphomeServer.Handler {
         } catch (e: Exception) {
             // L'ajout manuel par adresse IP reste possible
         }
+    }
+
+    private fun isEmulatorNetwork(): Boolean {
+        val connectivity = getSystemService(ConnectivityManager::class.java) ?: return false
+        val properties = connectivity.getLinkProperties(connectivity.activeNetwork) ?: return false
+        return properties.linkAddresses.any { it.address.hostAddress?.startsWith("10.0.2.") == true }
     }
 
     /**
