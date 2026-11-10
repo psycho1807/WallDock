@@ -32,15 +32,26 @@ class Prefs(context: Context) {
         get() = sp.getStringSet(KEY_VIDEO, emptySet())?.toSet() ?: emptySet()
         set(value) = sp.edit().putStringSet(KEY_VIDEO, value).apply()
 
+    /** Position de la poignée qui ouvre le dock (voir HANDLE_*). */
+    var handlePosition: String
+        get() = sp.getString(KEY_HANDLE, HANDLE_BOTTOM_RIGHT) ?: HANDLE_BOTTOM_RIGHT
+        set(value) = sp.edit().putString(KEY_HANDLE, value).apply()
+
     val isConfigured: Boolean
         get() = haUrl.isNotBlank() && pin.isNotBlank()
 
-    private companion object {
-        const val KEY_URL = "ha_url"
-        const val KEY_PIN = "pin"
-        const val KEY_DELAY = "return_seconds"
-        const val KEY_DOCK = "dock_apps"
-        const val KEY_VIDEO = "video_apps"
+    companion object {
+        const val HANDLE_BOTTOM_RIGHT = "bottom_right"
+        const val HANDLE_BOTTOM_LEFT = "bottom_left"
+        const val HANDLE_RIGHT_MIDDLE = "right_middle"
+        const val HANDLE_HIDDEN = "hidden"
+
+        private const val KEY_HANDLE = "handle_position"
+        private const val KEY_URL = "ha_url"
+        private const val KEY_PIN = "pin"
+        private const val KEY_DELAY = "return_seconds"
+        private const val KEY_DOCK = "dock_apps"
+        private const val KEY_VIDEO = "video_apps"
     }
 }
 

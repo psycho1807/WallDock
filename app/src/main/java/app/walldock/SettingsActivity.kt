@@ -16,6 +16,8 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
 
@@ -27,6 +29,7 @@ class SettingsActivity : Activity() {
     private lateinit var pinField: EditText
     private lateinit var delayField: EditText
     private lateinit var statusText: TextView
+    private lateinit var handleGroup: RadioGroup
 
     private val dockSelection = mutableListOf<String>()
     private val videoSelection = mutableSetOf<String>()
@@ -55,6 +58,25 @@ class SettingsActivity : Activity() {
         delayField = field(prefs.returnSeconds.toString(), "120", InputType.TYPE_CLASS_NUMBER)
         column.addView(delayField)
 
+        column.addView(label("Poignée du dock"))
+        handleGroup = RadioGroup(this)
+        val handleChoices = listOf(
+            Prefs.HANDLE_BOTTOM_RIGHT to "En bas à droite",
+            Prefs.HANDLE_BOTTOM_LEFT to "En bas à gauche",
+            Prefs.HANDLE_RIGHT_MIDDLE to "Au milieu du bord droit",
+            Prefs.HANDLE_HIDDEN to "Cachée : glisser depuis le bord droit vers la gauche"
+        )
+        for ((value, text) in handleChoices) {
+            val choice = RadioButton(this)
+            choice.id = View.generateViewId()
+            choice.text = text
+            choice.tag = value
+            choice.setTextColor(Color.WHITE)
+            handleGroup.addView(choice)
+            if (value == prefs.handlePosition) handleGroup.check(choice.id)
+        }
+        column.addView(handleGroup)
+
         column.addView(heading("Autorisations", 18f))
         statusText = TextView(this)
         statusText.setTextColor(0xFFB0C4E0.toInt())
@@ -69,6 +91,10 @@ class SettingsActivity : Activity() {
         })
         column.addView(button("Activer la détection d’activité (accessibilité)") {
             open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        })
+        column.addView(button("Quitter le mode kiosque") {
+            toast("Choisis l’écran d’accueil habituel de la tablette")
+            open(Intent(Settings.ACTION_HOME_SETTINGS))
         })
 
         column.addView(heading("Applis du dock", 18f))
@@ -113,6 +139,8 @@ class SettingsActivity : Activity() {
                 prefs.returnSeconds = delay
                 prefs.dockApps = dockSelection.toList()
                 prefs.videoApps = videoSelection.toSet()
+                val checked = handleGroup.findViewById<RadioButton>(handleGroup.checkedRadioButtonId)
+                prefs.handlePosition = (checked?.tag as? String) ?: Prefs.HANDLE_BOTTOM_RIGHT
                 toast("Réglages enregistrés")
                 finish()
             }

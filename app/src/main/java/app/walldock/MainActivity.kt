@@ -4,12 +4,15 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -36,6 +39,8 @@ class MainActivity : Activity() {
     private lateinit var dockPanel: HorizontalScrollView
     private lateinit var dockRow: LinearLayout
     private lateinit var handle: TextView
+    private lateinit var edgeStrip: View
+    private lateinit var overlayWarning: TextView
 
     private var loadedUrl = ""
     private val handler = Handler(Looper.getMainLooper())
@@ -74,18 +79,52 @@ class MainActivity : Activity() {
         dockParams.bottomMargin = dp(20)
         root.addView(dockPanel, dockParams)
 
-        // Poignée qui ouvre et ferme le dock
+        // Poignée qui ouvre et ferme le dock (position choisie dans les réglages)
         handle = TextView(this)
         handle.text = "▲"
-        handle.textSize = 18f
+        handle.textSize = 14f
         handle.setTextColor(Color.WHITE)
         handle.gravity = Gravity.CENTER
-        handle.alpha = 0.45f
-        handle.background = panelBackground(0xCC0A1634.toInt(), 22)
+        handle.alpha = 0.3f
+        handle.background = panelBackground(0xCC0A1634.toInt(), 18)
         handle.setOnClickListener { setDockVisible(dockPanel.visibility != View.VISIBLE) }
-        val handleParams = FrameLayout.LayoutParams(dp(44), dp(44), Gravity.BOTTOM or Gravity.END)
-        handleParams.setMargins(0, 0, dp(12), dp(12))
-        root.addView(handle, handleParams)
+        root.addView(handle, FrameLayout.LayoutParams(dp(36), dp(36), Gravity.BOTTOM or Gravity.END))
+
+        // Bande invisible sur le bord droit : glisser vers la gauche ouvre le dock (poignée cachée)
+        edgeStrip = View(this)
+        var downX = 0f
+        var opened = false
+        edgeStrip.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX
+                    opened = false
+                }
+                MotionEvent.ACTION_MOVE -> if (!opened && downX - event.rawX > dp(40)) {
+                    opened = true
+                    setDockVisible(true)
+                }
+            }
+            true
+        }
+        edgeStrip.visibility = View.GONE
+        root.addView(edgeStrip, FrameLayout.LayoutParams(dp(14), MATCH_PARENT, Gravity.END))
+
+        // Bandeau d'alerte si l'autorisation « affichage par-dessus » manque
+        overlayWarning = TextView(this)
+        overlayWarning.text = "⚠️ Autorisation « affichage par-dessus les autres applis » manquante : " +
+            "le retour automatique ne fonctionnera pas. Touchez ici pour la donner."
+        overlayWarning.setTextColor(Color.WHITE)
+        overlayWarning.textSize = 14f
+        overlayWarning.setPadding(dp(16), dp(10), dp(16), dp(10))
+        overlayWarning.setBackgroundColor(0xE6B23A48.toInt())
+        overlayWarning.visibility = View.GONE
+        overlayWarning.setOnClickListener {
+            Pin.ask(this, prefs) {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            }
+        }
+        root.addView(overlayWarning, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.TOP))
 
         setContentView(root)
     }
@@ -107,6 +146,34 @@ class MainActivity : Activity() {
         }
         web.onResume()
         rebuildDock()
+        applyHandlePosition()
+        overlayWarning.visibility = if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
+    }
+
+    private fun applyHandlePosition() {
+        val mode = prefs.handlePosition
+        edgeStrip.visibility = if (mode == Prefs.HANDLE_HIDDEN) View.VISIBLE else View.GONE
+        if (mode == Prefs.HANDLE_HIDDEN) {
+            handle.visibility = View.GONE
+            return
+        }
+        handle.visibility = View.VISIBLE
+        val params = FrameLayout.LayoutParams(dp(36), dp(36))
+        when (mode) {
+            Prefs.HANDLE_BOTTOM_LEFT -> {
+                params.gravity = Gravity.BOTTOM or Gravity.START
+                params.setMargins(dp(10), 0, 0, dp(10))
+            }
+            Prefs.HANDLE_RIGHT_MIDDLE -> {
+                params.gravity = Gravity.CENTER_VERTICAL or Gravity.END
+                params.setMargins(0, 0, dp(4), 0)
+            }
+            else -> {
+                params.gravity = Gravity.BOTTOM or Gravity.END
+                params.setMargins(0, 0, dp(10), dp(10))
+            }
+        }
+        handle.layoutParams = params
     }
 
     override fun onPause() {
