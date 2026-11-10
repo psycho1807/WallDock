@@ -12,6 +12,8 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Serveur de l'API native ESPHome (port 6053, sans chiffrement) : Home Assistant
@@ -78,6 +80,11 @@ public final class EsphomeServer {
     private final Handler handler;
     private final int port;
     private final List<Client> clients = new CopyOnWriteArrayList<>();
+    private final ExecutorService sender = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "esphome-sender");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private volatile ServerSocket serverSocket;
     private volatile boolean running;
@@ -108,20 +115,27 @@ public final class EsphomeServer {
         }
         for (Client client : clients) client.close();
         clients.clear();
+        sender.shutdownNow();
     }
 
     public int clientCount() {
         return clients.size();
     }
 
-    /** Met à jour l'état d'une entité et le pousse aux clients abonnés si la valeur a changé. */
+    /**
+     * Met à jour l'état d'une entité et le pousse aux clients abonnés si la valeur a changé.
+     * Utilisable depuis n'importe quel fil : l'envoi réseau se fait sur un fil dédié
+     * (Android interdit les accès réseau depuis le fil d'affichage).
+     */
     public void setState(Entity entity, Object value) {
         Object previous = entity.state;
         entity.state = value;
         if (value != null && value.equals(previous)) return;
-        for (Client client : clients) {
-            if (client.subscribed) client.sendState(entity);
-        }
+        sender.execute(() -> {
+            for (Client client : clients) {
+                if (client.subscribed) client.sendState(entity);
+            }
+        });
     }
 
     private void acceptLoop() {
