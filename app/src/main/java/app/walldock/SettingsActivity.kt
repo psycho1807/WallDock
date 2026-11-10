@@ -125,7 +125,7 @@ class SettingsActivity : Activity() {
         val activity = AppState.accessibilityActive
         statusText.text = listOf(
             (if (home) "✅ " else "⚠️ ") + "Écran d’accueil par défaut",
-            (if (overlay) "✅ " else "⚠️ ") + "Affichage par-dessus les autres applis",
+            (if (overlay) "✅ Affichage par-dessus les autres applis" else "⚠️ Affichage par-dessus les autres applis (indispensable au retour automatique)"),
             (if (activity) "✅ Détection d’activité" else "➖ Détection d’activité (sans elle : retour après un délai fixe)")
         ).joinToString("\n")
     }

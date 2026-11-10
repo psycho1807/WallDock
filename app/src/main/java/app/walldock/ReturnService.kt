@@ -8,24 +8,37 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.TextView
 
 /**
- * Tourne pendant qu'une appli du dock est ouverte et ramène la tablette
- * au tableau de bord après le délai d'inactivité.
+ * Tourne pendant qu'une appli du dock est ouverte.
  *
- * - Avec la détection d'activité (accessibilité) : le délai repart à chaque geste.
- * - Sans elle : retour après le délai compté depuis l'ouverture de l'appli.
+ * - Affiche un bouton flottant ⌂ par-dessus l'appli pour revenir au tableau de bord.
+ *   Ce bouton visible est aussi ce qui autorise WallDock (Android 15+) à revenir
+ *   au premier plan tout seul.
+ * - Ramène la tablette au tableau de bord après le délai d'inactivité
+ *   (sauf pour les applis « Vidéo », délai = 0).
+ * - Avec la détection d'activité (accessibilité), le délai repart à chaque geste ;
+ *   sans elle, il est compté depuis l'ouverture de l'appli.
  */
 class ReturnService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var timeoutMs = 0L
     private var startedAt = 0L
+    private var overlay: View? = null
 
     private val tick = object : Runnable {
         override fun run() {
@@ -41,20 +54,18 @@ class ReturnService : Service() {
         startedAt = SystemClock.elapsedRealtime()
         AppState.lastInteraction = startedAt
 
-        // Obligatoire juste après startForegroundService(), même si on s'arrête aussitôt
+        // Obligatoire juste après startForegroundService()
         startInForeground(seconds)
+        showOverlay()
 
         handler.removeCallbacks(tick)
-        if (timeoutMs <= 0) {
-            stopSelf()
-        } else {
-            handler.postDelayed(tick, CHECK_EVERY_MS)
-        }
+        handler.postDelayed(tick, CHECK_EVERY_MS)
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
         handler.removeCallbacks(tick)
+        hideOverlay()
         super.onDestroy()
     }
 
@@ -64,6 +75,8 @@ class ReturnService : Service() {
             stopSelf()
             return false
         }
+        if (timeoutMs <= 0) return true // appli « Vidéo » : pas de retour automatique
+
         val now = SystemClock.elapsedRealtime()
         val reference = if (AppState.accessibilityActive) maxOf(startedAt, AppState.lastInteraction) else startedAt
         if (now - reference >= timeoutMs) {
@@ -75,26 +88,77 @@ class ReturnService : Service() {
     }
 
     private fun returnToDashboard() {
-        // 1) Bouton Accueil virtuel : fonctionne toujours quand WallDock est l'écran d'accueil
-        InteractionService.instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
-        // 2) Ouverture directe : autorisée par Android si "affichage par-dessus" est accordé
+        // 1) Ouverture directe : autorisée tant que le bouton flottant est visible
         try {
             val intent = Intent(this, MainActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         } catch (e: Exception) {
-            // Bloqué par Android : le bouton Accueil virtuel ci-dessus a pris le relais
+            // Bloqué par Android : on tente le bouton Accueil virtuel ci-dessous
         }
+        // 2) Bouton Accueil virtuel (si la détection d'activité est active) :
+        //    ramène à WallDock quand il est l'écran d'accueil
+        InteractionService.instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+    }
+
+    private fun showOverlay() {
+        if (overlay != null || !Settings.canDrawOverlays(this)) return
+
+        val button = TextView(this)
+        button.text = "⌂"
+        button.textSize = 24f
+        button.setTextColor(Color.WHITE)
+        button.gravity = Gravity.CENTER
+        button.alpha = 0.85f
+        val background = GradientDrawable()
+        background.shape = GradientDrawable.OVAL
+        background.setColor(0xCC0A1634.toInt())
+        background.setStroke(dp(1), 0x993FD4FF.toInt())
+        button.background = background
+        button.setOnClickListener {
+            returnToDashboard()
+            stopSelf()
+        }
+
+        val params = WindowManager.LayoutParams(
+            dp(48),
+            dp(48),
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.BOTTOM or Gravity.END
+        params.x = dp(12)
+        params.y = dp(12)
+
+        try {
+            getSystemService(WindowManager::class.java)?.addView(button, params)
+            overlay = button
+        } catch (e: Exception) {
+            overlay = null
+        }
+    }
+
+    private fun hideOverlay() {
+        val view = overlay ?: return
+        try {
+            getSystemService(WindowManager::class.java)?.removeView(view)
+        } catch (e: Exception) {
+            // déjà retiré
+        }
+        overlay = null
     }
 
     private fun startInForeground(seconds: Int) {
         getSystemService(NotificationManager::class.java)?.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "Retour automatique", NotificationManager.IMPORTANCE_LOW)
         )
+        val text = if (seconds > 0) "Retour au tableau de bord après $seconds s d’inactivité"
+        else "Touchez ⌂ pour revenir au tableau de bord"
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_walldock)
             .setContentTitle("WallDock")
-            .setContentText("Retour au tableau de bord après $seconds s d’inactivité")
+            .setContentText(text)
             .setOngoing(true)
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -111,6 +175,7 @@ class ReturnService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val CHECK_EVERY_MS = 2_000L
 
+        /** [seconds] = 0 : pas de retour automatique, seulement le bouton ⌂. */
         fun start(context: Context, packageName: String, seconds: Int) {
             val intent = Intent(context, ReturnService::class.java)
             intent.putExtra(EXTRA_PACKAGE, packageName)

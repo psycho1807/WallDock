@@ -161,7 +161,7 @@ class MainActivity : Activity() {
             return
         }
         val seconds = if (packageName in prefs.videoApps) 0 else prefs.returnSeconds
-        if (seconds > 0) ReturnService.start(this, packageName, seconds)
+        ReturnService.start(this, packageName, seconds)
     }
 
     private fun setDockVisible(visible: Boolean) {
