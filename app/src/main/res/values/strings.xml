@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WallDock</string>
+    <string name="accessibility_label">WallDock – détection d’activité</string>
+    <string name="accessibility_description">Permet à WallDock de savoir si quelqu’un utilise encore l’appli ouverte depuis le dock, pour ne revenir au tableau de bord qu’après une vraie inactivité. WallDock ne lit aucun contenu et n’envoie rien.</string>
+</resources>
