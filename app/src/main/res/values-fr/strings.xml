@@ -142,4 +142,5 @@
     <string name="jarvis_state_listening">Écoute</string>
     <string name="jarvis_state_thinking">Réfléchit</string>
     <string name="jarvis_state_speaking">Parle</string>
+    <string name="entity_lecteur">Lecteur</string>
 </resources>

@@ -1,0 +1,3 @@
+stop.tflite — microWakeWord "Stop" model by Kevin Ahrendt
+https://github.com/kahrendt/microWakeWord (release "stop")
+Licensed under the Apache License, Version 2.0.

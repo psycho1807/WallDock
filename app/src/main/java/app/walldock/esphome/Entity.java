@@ -7,7 +7,37 @@ import java.util.List;
 /** Une entité exposée à Home Assistant (capteur, interrupteur, bouton…). */
 public final class Entity {
 
-    public enum Kind { SENSOR, BINARY_SENSOR, SWITCH, NUMBER, BUTTON, TEXT_SENSOR, SELECT }
+    public enum Kind { SENSOR, BINARY_SENSOR, SWITCH, NUMBER, BUTTON, TEXT_SENSOR, SELECT, MEDIA_PLAYER }
+
+    /** État d'un lecteur multimédia (entité MEDIA_PLAYER). */
+    public static final class MediaState {
+        public static final int IDLE = 1;
+        public static final int PLAYING = 2;
+        public static final int PAUSED = 3;
+        public static final int ANNOUNCING = 4;
+
+        public final int state;
+        public final float volume;
+        public final boolean muted;
+
+        public MediaState(int state, float volume, boolean muted) {
+            this.state = state;
+            this.volume = volume;
+            this.muted = muted;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof MediaState)) return false;
+            MediaState o = (MediaState) other;
+            return o.state == state && o.muted == muted && Math.abs(o.volume - volume) < 0.005f;
+        }
+
+        @Override
+        public int hashCode() {
+            return state * 31 + (muted ? 1 : 0);
+        }
+    }
 
     /** Choix proposés (entités SELECT). Home Assistant les relit à chaque reconnexion. */
     public volatile List<String> options = new ArrayList<>();

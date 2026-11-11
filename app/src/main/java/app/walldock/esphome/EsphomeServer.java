@@ -32,7 +32,27 @@ public final class EsphomeServer {
         void onSelect(Entity entity, String option);
         /** Action appelée depuis HA ; [args] associe le nom de chaque paramètre à sa valeur. */
         void onService(UserService service, Map<String, Object> args);
+        /**
+         * Commande du lecteur multimédia : command (MEDIA_COMMAND_*), volume (0–1) et url
+         * valent null quand HA ne les envoie pas.
+         */
+        default void onMediaPlayer(Entity entity, Integer command, Float volume, String url, boolean announcement) {}
     }
+
+    // Commandes du lecteur multimédia (MediaPlayerCommand)
+    public static final int MEDIA_COMMAND_PLAY = 0;
+    public static final int MEDIA_COMMAND_PAUSE = 1;
+    public static final int MEDIA_COMMAND_STOP = 2;
+    public static final int MEDIA_COMMAND_MUTE = 3;
+    public static final int MEDIA_COMMAND_UNMUTE = 4;
+    public static final int MEDIA_COMMAND_TOGGLE = 5;
+    public static final int MEDIA_COMMAND_VOLUME_UP = 6;
+    public static final int MEDIA_COMMAND_VOLUME_DOWN = 7;
+
+    // Fonctions annoncées à HA (MediaPlayerEntityFeature)
+    private static final int MEDIA_FEATURES = 1 /* PAUSE */ | 4 /* VOLUME_SET */ | 8 /* VOLUME_MUTE */
+        | 512 /* PLAY_MEDIA */ | 1024 /* VOLUME_STEP */ | 4096 /* STOP */ | 16384 /* PLAY */
+        | 131072 /* BROWSE_MEDIA */ | 1048576 /* MEDIA_ANNOUNCE */;
 
     /** Événements de l'assistant vocal envoyés par Home Assistant (fil du client réseau). */
     public interface VoiceHandler {
@@ -124,6 +144,9 @@ public final class EsphomeServer {
     private static final int LIST_SELECT = 52;
     private static final int SELECT_STATE = 53;
     private static final int SELECT_COMMAND = 54;
+    private static final int LIST_MEDIA_PLAYER = 63;
+    private static final int MEDIA_PLAYER_STATE = 64;
+    private static final int MEDIA_PLAYER_COMMAND = 65;
     private static final int SUBSCRIBE_VOICE_ASSISTANT = 89;
     private static final int VOICE_ASSISTANT_REQUEST = 90;
     private static final int VOICE_ASSISTANT_RESPONSE = 91;
@@ -348,6 +371,18 @@ public final class EsphomeServer {
                     for (UserService service : services) send(LIST_SERVICES, describe(service));
                     send(LIST_ENTITIES_DONE, new byte[0]);
                     return true;
+                case MEDIA_PLAYER_COMMAND: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    Entity entity = find(Proto.getInt(f, 1), Entity.Kind.MEDIA_PLAYER);
+                    if (entity != null && handler != null) {
+                        handler.onMediaPlayer(entity,
+                            Proto.getBool(f, 2) ? Integer.valueOf(Proto.getInt(f, 3)) : null,
+                            Proto.getBool(f, 4) ? Float.valueOf(Proto.getFloat(f, 5)) : null,
+                            Proto.getBool(f, 6) ? Proto.getString(f, 7) : null,
+                            Proto.getBool(f, 8) && Proto.getBool(f, 9));
+                    }
+                    return true;
+                }
                 case SELECT_COMMAND: {
                     Map<Integer, Object> f = Proto.read(payload);
                     Entity entity = find(Proto.getInt(f, 1), Entity.Kind.SELECT);
@@ -533,6 +568,17 @@ public final class EsphomeServer {
                         send(SELECT_STATE, w.bytes());
                         break;
                     }
+                    case MEDIA_PLAYER: {
+                        Proto.Writer w = new Proto.Writer().fixed32(1, entity.key);
+                        if (state instanceof Entity.MediaState) {
+                            Entity.MediaState m = (Entity.MediaState) state;
+                            w.varint(2, m.state).floatValue(3, m.volume).bool(4, m.muted);
+                        } else {
+                            w.varint(2, Entity.MediaState.IDLE);
+                        }
+                        send(MEDIA_PLAYER_STATE, w.bytes());
+                        break;
+                    }
                     case BUTTON:
                         break; // un bouton n'a pas d'état
                 }
@@ -549,6 +595,7 @@ public final class EsphomeServer {
                 case NUMBER: return LIST_NUMBER;
                 case BUTTON: return LIST_BUTTON;
                 case SELECT: return LIST_SELECT;
+                case MEDIA_PLAYER: return LIST_MEDIA_PLAYER;
                 default: return LIST_TEXT_SENSOR;
             }
         }
@@ -586,6 +633,9 @@ public final class EsphomeServer {
                     for (String option : e.options) w.stringAlways(6, option);
                     return w.varint(8, e.entityCategory).bytes();
                 }
+                case MEDIA_PLAYER:
+                    return w.string(5, e.icon).varint(7, e.entityCategory).bool(8, true)
+                        .varint(11, MEDIA_FEATURES).bytes();
                 default: // TEXT_SENSOR
                     return w.string(5, e.icon).varint(7, e.entityCategory).string(8, e.deviceClass).bytes();
             }

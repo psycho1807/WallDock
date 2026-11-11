@@ -38,6 +38,7 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     private val main = Handler(Looper.getMainLooper())
     private var server: EsphomeServer? = null
+    private var mediaPlayer: TabletPlayer? = null
     private var nsdManager: NsdManager? = null
     private var nsdListener: NsdManager.RegistrationListener? = null
 
@@ -85,8 +86,10 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val wakeScore = Entity(Entity.Kind.SENSOR, "score_hey_jarvis", tr(R.string.entity_score_hey_jarvis))
         .unit("%").measurement().icon("mdi:waveform").category(Entity.CATEGORY_DIAGNOSTIC)
 
+    private val mediaEntity = Entity(Entity.Kind.MEDIA_PLAYER, "lecteur", tr(R.string.entity_lecteur)).icon("mdi:speaker")
+
     private val entities = listOf(
-        jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
+        mediaEntity, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate
     )
@@ -193,10 +196,17 @@ class ApiService : Service(), EsphomeServer.Handler {
         val srv = EsphomeServer(info, entities, services, this, EsphomeServer.DEFAULT_PORT)
         server = srv
         val assistant = Jarvis(this, srv) { wakeUp() }
-        assistant.onStateChanged = { server?.setState(jarvisState, JARVIS_LABELS[it] ?: "") }
+        val tabletPlayer = TabletPlayer(this) { server?.setState(mediaEntity, it) }
+        mediaPlayer = tabletPlayer
+        assistant.onStateChanged = {
+            server?.setState(jarvisState, JARVIS_LABELS[it] ?: "")
+            // La musique se met en pause pendant que Jarvis écoute ou parle
+            tabletPlayer.setInterrupted(it == Jarvis.State.LISTENING || it == Jarvis.State.THINKING || it == Jarvis.State.SPEAKING)
+        }
         jarvis = assistant
         srv.setVoiceHandler(assistant)
         srv.setState(jarvisState, JARVIS_LABELS[Jarvis.State.OFF] ?: "")
+        srv.setState(mediaEntity, tabletPlayer.state())
         srv.setState(screen, AppState.screenOn)
         srv.setState(brightness, if (AppState.brightness < 0) 100f else AppState.brightness)
         srv.setState(currentApp, AppState.currentApp)
@@ -240,6 +250,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         instance = null
         jarvis?.release()
         jarvis = null
+        mediaPlayer?.release()
+        mediaPlayer = null
         main.removeCallbacks(updateCheck)
         main.removeCallbacks(micReport)
         Updater.removeListener(updateListener)
@@ -309,6 +321,28 @@ class ApiService : Service(), EsphomeServer.Handler {
         val max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         val current = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
         server?.setState(volume, (current * 100f / max).toInt().toFloat())
+        mediaPlayer?.report()
+    }
+
+    override fun onMediaPlayer(entity: Entity, command: Int?, volume: Float?, url: String?, announcement: Boolean) {
+        main.post {
+            val p = mediaPlayer ?: return@post
+            if (volume != null) p.setVolume(volume)
+            if (url != null) {
+                if (announcement) p.announce(url) else p.play(url)
+            }
+            when (command) {
+                EsphomeServer.MEDIA_COMMAND_PLAY -> p.resume()
+                EsphomeServer.MEDIA_COMMAND_PAUSE -> p.pause()
+                EsphomeServer.MEDIA_COMMAND_STOP -> p.stop()
+                EsphomeServer.MEDIA_COMMAND_MUTE -> p.setMuted(true)
+                EsphomeServer.MEDIA_COMMAND_UNMUTE -> p.setMuted(false)
+                EsphomeServer.MEDIA_COMMAND_TOGGLE -> p.toggle()
+                EsphomeServer.MEDIA_COMMAND_VOLUME_UP -> p.volumeStep(up = true)
+                EsphomeServer.MEDIA_COMMAND_VOLUME_DOWN -> p.volumeStep(up = false)
+            }
+            reportVolume()
+        }
     }
 
     private fun setVolume(percent: Float) {

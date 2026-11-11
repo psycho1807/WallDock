@@ -1,0 +1,4 @@
+• Lecteur multimédia dans Home Assistant : musique, radio, annonces, pause, volume
+• Dites « Stop » pour couper Jarvis ou la sonnerie d'un minuteur
+• Jarvis ne s'affiche plus en erreur quand personne ne répond ou qu'une autre tablette a déjà répondu
+• Son du micro nettoyé (réduction du bruit, écho)

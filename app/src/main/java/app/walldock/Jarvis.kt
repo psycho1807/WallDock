@@ -35,6 +35,25 @@ class Jarvis(
     /** Minuteurs vocaux (bandeau + sonnerie). */
     val timers = TimerOverlay(context) { wakeUp() }
 
+    /** Détection du mot « Stop » (pendant que Jarvis parle ou qu'un minuteur sonne). */
+    @Volatile
+    private var stopDetector: app.walldock.wakeword.StopWordDetector? = null
+    private var stopListening = false
+
+    /** Dernier score du mot « Stop » (0–1), pour le diagnostic. */
+    val stopScore: Float
+        get() = stopDetector?.lastScore ?: 0f
+
+    init {
+        Thread({ stopDetector = app.walldock.wakeword.StopWordDetector.load(context) }, "jarvis-stop").start()
+    }
+
+    /** « Stop » entendu (fil principal) : on coupe la sonnerie et/ou la voix de Jarvis. */
+    private fun onStopWord() {
+        if (timers.isSoundPlaying) timers.stopRinging()
+        if (state == State.SPEAKING) cancel()
+    }
+
     /** Détecteur « Hey Jarvis » sur la tablette (null = détection par HA). */
     @Volatile
     private var detector: WakeWordDetector? = null
@@ -92,6 +111,11 @@ class Jarvis(
     private var player: MediaPlayer? = null
     private var conversationId = ""
     private var continueConversation = false
+    // Tour de parole enchaîné sans « Hey Jarvis » : un silence n'est pas une erreur
+    private var followUpTurn = false
+    // Micro coupé (silence envoyé) jusqu'à cette heure : évite d'envoyer le bip à HA
+    @Volatile
+    private var muteUntil = 0L
     private var runEnded = false
     private var speechPending = false
     private var errorBackoffMs = 1_000L
@@ -157,6 +181,8 @@ class Jarvis(
         setState(State.OFF)
         detector?.close()
         detector = null
+        stopDetector?.close()
+        stopDetector = null
     }
 
     // ---- Événements de Home Assistant (fil réseau → fil principal) ----
@@ -217,7 +243,7 @@ class Jarvis(
             val afterAnnounce = {
                 server.voiceAnnounceFinished(true)
                 if (startConversation) {
-                    startConversationTurn("")
+                    startConversationTurn("", followUp = true)
                 } else {
                     overlay.hideAfter(1_500)
                     restartWaiting()
@@ -309,6 +335,13 @@ class Jarvis(
                 if (state == State.WAITING) {
                     // Pas de mot d'activation, moteur indisponible… : on relance l'écoute
                     if (code != "no_wake_word") scheduleRestartAfterError()
+                } else if (code == "duplicate_wake_up_detected" ||
+                    (followUpTurn && (code == "stt-no-text-recognized" || code == "stt-timeout"))
+                ) {
+                    // Une autre tablette a déjà répondu au même « Hey Jarvis »,
+                    // ou personne n'a rien dit pour continuer la conversation : on se tait
+                    continueConversation = false
+                    overlay.hide()
                 } else {
                     val message = when (code) {
                         "stt-no-text-recognized", "stt-stream-failed" -> tr(R.string.jarvis_not_understood)
@@ -330,7 +363,7 @@ class Jarvis(
         if (restartScheduled) return
         if (continueConversation && state != State.OFF) {
             continueConversation = false
-            startConversationTurn(conversationId)
+            startConversationTurn(conversationId, followUp = true)
             return
         }
         conversationId = ""
@@ -339,13 +372,13 @@ class Jarvis(
     }
 
     /** Lance un tour de parole sans mot d'activation (écoute immédiate). */
-    private fun startConversationTurn(conversation: String) {
+    private fun startConversationTurn(conversation: String, followUp: Boolean = false) {
         if (!ensureMic()) return
         wakeUp()
         beep()
         setState(State.LISTENING)
         overlay.show(JarvisOverlay.Mode.LISTENING)
-        startRun(conversation, EsphomeServer.VOICE_FLAG_USE_VAD)
+        startRun(conversation, EsphomeServer.VOICE_FLAG_USE_VAD, followUp = followUp)
     }
 
     /** Revient à l'écoute de « Hey Jarvis » (ou coupe le micro si l'option est désactivée). */
@@ -406,7 +439,9 @@ class Jarvis(
         startRun("", EsphomeServer.VOICE_FLAG_USE_VAD, "Hey Jarvis")
     }
 
-    private fun startRun(conversation: String, flags: Int, wakeWordPhrase: String = "") {
+    private fun startRun(conversation: String, flags: Int, wakeWordPhrase: String = "", followUp: Boolean = false) {
+        followUpTurn = followUp
+        muteUntil = android.os.SystemClock.elapsedRealtime() + BEEP_MUTE_MS
         runActive = true
         runEnded = false
         speechPending = false
@@ -455,6 +490,7 @@ class Jarvis(
             record.release()
             return false
         }
+        enableAudioEffects(record.audioSessionId)
         recorder = record
         recording = true
         val thread = Thread({ recordLoop(record) }, "jarvis-mic")
@@ -494,11 +530,70 @@ class Jarvis(
                     main.post { onLocalWakeWord() }
                 }
             }
-            if (streaming) server.voiceAudio(buffer, n)
+            val stop = stopDetector
+            if (stop != null && (state == State.SPEAKING || timers.isSoundPlaying)) {
+                if (!stopListening) {
+                    stopListening = true
+                    stop.reset()
+                }
+                val heard = try {
+                    stop.process(buffer, n)
+                } catch (e: Exception) {
+                    false
+                }
+                if (heard) main.post { onStopWord() }
+            } else {
+                stopListening = false
+            }
+            if (streaming) {
+                if (android.os.SystemClock.elapsedRealtime() < muteUntil) java.util.Arrays.fill(buffer, 0, n, 0)
+                server.voiceAudio(buffer, n)
+            }
         }
     }
 
+    // Home Assistant préfère recevoir un son déjà nettoyé (bruit réduit, volume régulé) :
+    // on active les traitements de la tablette quand elle en a.
+    private val audioEffects = mutableListOf<android.media.audiofx.AudioEffect>()
+
+    private fun enableAudioEffects(session: Int) {
+        releaseAudioEffects()
+        try {
+            if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
+                android.media.audiofx.NoiseSuppressor.create(session)?.let { it.enabled = true; audioEffects.add(it) }
+            }
+        } catch (e: Exception) {
+            // pas de réduction de bruit sur cette tablette
+        }
+        try {
+            if (android.media.audiofx.AutomaticGainControl.isAvailable()) {
+                android.media.audiofx.AutomaticGainControl.create(session)?.let { it.enabled = true; audioEffects.add(it) }
+            }
+        } catch (e: Exception) {
+            // pas de réglage automatique du volume
+        }
+        try {
+            if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
+                android.media.audiofx.AcousticEchoCanceler.create(session)?.let { it.enabled = true; audioEffects.add(it) }
+            }
+        } catch (e: Exception) {
+            // pas d'annulation d'écho
+        }
+    }
+
+    private fun releaseAudioEffects() {
+        for (effect in audioEffects) {
+            try {
+                effect.release()
+            } catch (e: Exception) {
+                // déjà libéré
+            }
+        }
+        audioEffects.clear()
+    }
+
     private fun stopMic() {
+        releaseAudioEffects()
         recording = false
         recordThread?.join(500)
         recordThread = null
@@ -592,6 +687,8 @@ class Jarvis(
         private const val CHUNK_BYTES = 2_048
         /** Seuil de détection de « Hey Jarvis » (comme l'appli openWakeWord de HA). */
         private const val WAKE_THRESHOLD = 0.5f
+        /** Durée du bip de début d'écoute, remplacée par du silence dans le son envoyé à HA. */
+        private const val BEEP_MUTE_MS = 300L
 
         const val FEATURES = EsphomeServer.VOICE_FEATURE_VOICE_ASSISTANT or
             EsphomeServer.VOICE_FEATURE_API_AUDIO or

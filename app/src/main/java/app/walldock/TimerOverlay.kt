@@ -47,6 +47,11 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
 
     var onRingingChanged: ((Boolean) -> Unit)? = null
 
+    /** Vrai tant que la sonnerie retentit (lu par le fil du micro pour le mot « Stop »). */
+    @Volatile
+    var isSoundPlaying = false
+        private set
+
     private val tick = object : Runnable {
         override fun run() {
             refreshBar()
@@ -80,6 +85,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
     fun stopRinging() {
         handler.removeCallbacks(autoStop)
         ringing.clear()
+        isSoundPlaying = false
         player?.let {
             try {
                 it.stop()
@@ -169,6 +175,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         if (ringView == null) showRingView()
         ringText?.text = ringing.joinToString("\n")
         if (player == null) startSound()
+        isSoundPlaying = true
         handler.removeCallbacks(autoStop)
         handler.postDelayed(autoStop, 2 * 60_000L)
     }

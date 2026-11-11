@@ -26,6 +26,10 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - « Hey Jarvis » reconnu sur la tablette (modèles openWakeWord) ou par Home Assistant.
 - Visage animé plein écran avec la question et la réponse, conversation qui s'enchaîne.
 - Annonces (`assist_satellite.announce`), minuteurs vocaux avec compte à rebours et sonnerie.
+- Dites « Stop » pour couper Jarvis ou la sonnerie d'un minuteur (modèle microWakeWord, sur la tablette).
+
+**Lecteur multimédia**
+- La tablette apparaît comme `media_player` dans HA : musique, radio, Music Assistant, annonces, pause, volume, muet. La musique se met en pause quand Jarvis écoute.
 
 ## Installation
 
@@ -55,6 +59,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 ## Crédits
 
+- Mot « Stop » : modèle [microWakeWord](https://github.com/kahrendt/microWakeWord) de Kevin Ahrendt (Apache 2.0), inclus dans l'appli ; extraction des caractéristiques portée du micro frontend de TensorFlow Lite Micro (Apache 2.0).
 - Détection du mot d'activation : modèles [openWakeWord](https://github.com/dscripka/openWakeWord) (téléchargés au premier usage, licence CC BY-NC-SA 4.0), exécutés avec TensorFlow Lite.
 - Protocole : [API native ESPHome](https://esphome.io/components/api.html).
 
@@ -66,7 +71,8 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 - Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, clock screensaver, offline fallback screen, automatic updates from GitHub releases.
 - Native ESPHome API integration (auto-discovered): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
-- **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements and voice timers.
+- **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.
+- **Media player** entity: music, radio, Music Assistant, announcements, pause and volume.
 
 Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest), or with [Obtainium](https://github.com/ImranR98/Obtainium) to get updates straight from GitHub:
 

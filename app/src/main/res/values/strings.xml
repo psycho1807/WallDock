@@ -143,4 +143,5 @@
     <string name="jarvis_state_listening">Listening</string>
     <string name="jarvis_state_thinking">Thinking</string>
     <string name="jarvis_state_speaking">Speaking</string>
+    <string name="entity_lecteur">Player</string>
 </resources>
