@@ -11,8 +11,8 @@ android {
         applicationId = "app.walldock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "0.11.1"
+        versionCode = 27
+        versionName = "0.12.0"
     }
 
     buildFeatures {

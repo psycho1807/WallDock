@@ -1,0 +1,1 @@
+• Réglages de WallDock modifiables depuis Home Assistant : écoute et sensibilité de Jarvis, écran de veille, retour au tableau de bord, poignée du dock, adresse, mises à jour

@@ -39,6 +39,8 @@ public final class EsphomeServer {
         default void onMediaPlayer(Entity entity, Integer command, Float volume, String url, boolean announcement) {}
         /** HA demande une image d'une entité caméra : répondre avec sendCameraImage(). */
         default void onCameraRequest(Entity entity) {}
+        /** Nouvelle valeur d'une entité texte, saisie dans HA. */
+        default void onText(Entity entity, String value) {}
         /** Réponse de HA à requestHomeAssistantState() (état ou attribut d'une entité HA). */
         default void onHomeAssistantState(String entityId, String attribute, String state) {}
     }
@@ -150,6 +152,9 @@ public final class EsphomeServer {
     private static final int SELECT_COMMAND = 54;
     private static final int LIST_MEDIA_PLAYER = 63;
     private static final int LIST_CAMERA = 43;
+    private static final int LIST_TEXT = 97;
+    private static final int TEXT_STATE = 98;
+    private static final int TEXT_COMMAND = 99;
     private static final int CAMERA_IMAGE = 44;
     private static final int CAMERA_IMAGE_REQUEST = 45;
     private static final int SUBSCRIBE_HA_STATES = 38;
@@ -426,6 +431,12 @@ public final class EsphomeServer {
                     for (UserService service : services) send(LIST_SERVICES, describe(service));
                     send(LIST_ENTITIES_DONE, new byte[0]);
                     return true;
+                case TEXT_COMMAND: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    Entity entity = find(Proto.getInt(f, 1), Entity.Kind.TEXT);
+                    if (entity != null && handler != null) handler.onText(entity, Proto.getString(f, 2));
+                    return true;
+                }
                 case SUBSCRIBE_HA_STATES:
                     haStates = true;
                     return true;
@@ -652,6 +663,12 @@ public final class EsphomeServer {
                         send(MEDIA_PLAYER_STATE, w.bytes());
                         break;
                     }
+                    case TEXT: {
+                        Proto.Writer w = new Proto.Writer().fixed32(1, entity.key);
+                        if (state instanceof String) w.string(2, (String) state); else w.bool(3, true);
+                        send(TEXT_STATE, w.bytes());
+                        break;
+                    }
                     case BUTTON:
                     case CAMERA:
                         break; // pas d'état (la caméra envoie ses images à la demande)
@@ -671,6 +688,7 @@ public final class EsphomeServer {
                 case SELECT: return LIST_SELECT;
                 case MEDIA_PLAYER: return LIST_MEDIA_PLAYER;
                 case CAMERA: return LIST_CAMERA;
+                case TEXT: return LIST_TEXT;
                 default: return LIST_TEXT_SENSOR;
             }
         }
@@ -708,6 +726,8 @@ public final class EsphomeServer {
                     for (String option : e.options) w.stringAlways(6, option);
                     return w.varint(8, e.entityCategory).bytes();
                 }
+                case TEXT:
+                    return w.string(5, e.icon).varint(7, e.entityCategory).varint(9, 255).bytes();
                 case CAMERA:
                     return w.string(6, e.icon).varint(7, e.entityCategory).bytes();
                 case MEDIA_PLAYER:

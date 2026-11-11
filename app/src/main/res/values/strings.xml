@@ -176,4 +176,17 @@
     <string name="backup_failed">Could not write the file</string>
     <string name="backup_restored">Settings restored, WallDock restarts…</string>
     <string name="backup_invalid">This file is not a WallDock backup</string>
+    <string name="entity_set_listen">Listen for “Hey Jarvis”</string>
+    <string name="entity_set_on_device">Recognize “Hey Jarvis” on the tablet</string>
+    <string name="entity_set_sensitivity">“Hey Jarvis” sensitivity</string>
+    <string name="entity_set_screensaver">Screensaver</string>
+    <string name="entity_set_screensaver_minutes">Screensaver delay</string>
+    <string name="entity_set_return">Back to dashboard after</string>
+    <string name="entity_set_auto_update">Automatic updates</string>
+    <string name="entity_set_handle">Dock handle</string>
+    <string name="entity_set_url">Dashboard address</string>
+    <string name="sens_short_normal">Normal</string>
+    <string name="sens_short_high">High</string>
+    <string name="sens_short_very_high">Very high</string>
+    <string name="handle_hidden_short">Hidden (swipe from the right edge)</string>
 </resources>

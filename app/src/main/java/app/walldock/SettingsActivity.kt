@@ -317,6 +317,7 @@ class SettingsActivity : Activity() {
                 val checked = handleGroup.findViewById<RadioButton>(handleGroup.checkedRadioButtonId)
                 prefs.handlePosition = (checked?.tag as? String) ?: Prefs.HANDLE_BOTTOM_RIGHT
                 ApiService.instance?.onDockChanged()
+                ApiService.instance?.reportSettings()
                 toast(tr(R.string.settings_saved))
                 finish()
             }

@@ -404,6 +404,11 @@ class MainActivity : Activity(), DashboardController {
         handle.layoutParams = params
     }
 
+    override fun applySettings() {
+        applyHandlePosition()
+        showHome()
+    }
+
     override fun captureScreen(done: (android.graphics.Bitmap?) -> Unit) {
         val decor = window?.decorView
         if (!AppState.dashboardVisible || decor == null || decor.width <= 0 || decor.height <= 0) {

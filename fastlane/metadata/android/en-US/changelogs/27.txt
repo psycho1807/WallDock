@@ -1,0 +1,1 @@
+• WallDock settings editable from Home Assistant: Jarvis listening and sensitivity, screensaver, return delay, dock handle, address, updates

@@ -154,4 +154,6 @@ interface DashboardController {
     fun openUrl(url: String)
     /** Capture de l'écran de WallDock (null si WallDock n'est pas affiché). */
     fun captureScreen(done: (android.graphics.Bitmap?) -> Unit) = done(null)
+    /** Réglages modifiés depuis Home Assistant : poignée, adresse du tableau de bord… */
+    fun applySettings() {}
 }

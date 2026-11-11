@@ -88,12 +88,46 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     private val screenCamera = Entity(Entity.Kind.CAMERA, "capture_ecran", tr(R.string.entity_capture_ecran))
         .icon("mdi:monitor-screenshot").category(Entity.CATEGORY_DIAGNOSTIC)
+    // ---- Réglages de WallDock modifiables depuis HA (catégorie « Configuration ») ----
+    private val setListen = Entity(Entity.Kind.SWITCH, "reglage_ecoute_jarvis", tr(R.string.entity_set_listen))
+        .icon("mdi:ear-hearing").category(Entity.CATEGORY_CONFIG)
+    private val setOnDevice = Entity(Entity.Kind.SWITCH, "reglage_jarvis_sur_tablette", tr(R.string.entity_set_on_device))
+        .icon("mdi:tablet").category(Entity.CATEGORY_CONFIG)
+    private val setSensitivity = Entity(Entity.Kind.SELECT, "reglage_sensibilite_jarvis", tr(R.string.entity_set_sensitivity))
+        .icon("mdi:tune-vertical").category(Entity.CATEGORY_CONFIG)
+    private val setScreensaver = Entity(Entity.Kind.SWITCH, "reglage_ecran_de_veille", tr(R.string.entity_set_screensaver))
+        .icon("mdi:clock-outline").category(Entity.CATEGORY_CONFIG)
+    private val setScreensaverMinutes = Entity(Entity.Kind.NUMBER, "reglage_delai_veille", tr(R.string.entity_set_screensaver_minutes))
+        .unit("min").range(1f, 240f, 1f).icon("mdi:timer-outline").category(Entity.CATEGORY_CONFIG)
+        .also { it.numberMode = Entity.NUMBER_MODE_BOX }
+    private val setReturnSeconds = Entity(Entity.Kind.NUMBER, "reglage_retour_tableau", tr(R.string.entity_set_return))
+        .unit("s").range(10f, 3600f, 10f).icon("mdi:keyboard-return").category(Entity.CATEGORY_CONFIG)
+        .also { it.numberMode = Entity.NUMBER_MODE_BOX }
+    private val setAutoUpdate = Entity(Entity.Kind.SWITCH, "reglage_mises_a_jour_auto", tr(R.string.entity_set_auto_update))
+        .icon("mdi:update").category(Entity.CATEGORY_CONFIG)
+    private val setHandle = Entity(Entity.Kind.SELECT, "reglage_poignee_dock", tr(R.string.entity_set_handle))
+        .icon("mdi:gesture-tap").category(Entity.CATEGORY_CONFIG)
+    private val setUrl = Entity(Entity.Kind.TEXT, "reglage_adresse_tableau", tr(R.string.entity_set_url))
+        .icon("mdi:web").category(Entity.CATEGORY_CONFIG)
+
+    private val sensitivityLabels get() = listOf(
+        tr(R.string.sens_short_normal), tr(R.string.sens_short_high), tr(R.string.sens_short_very_high)
+    )
+    private val handleLabels get() = linkedMapOf(
+        Prefs.HANDLE_BOTTOM_RIGHT to tr(R.string.handle_bottom_right),
+        Prefs.HANDLE_BOTTOM_LEFT to tr(R.string.handle_bottom_left),
+        Prefs.HANDLE_RIGHT_MIDDLE to tr(R.string.handle_right_middle),
+        Prefs.HANDLE_HIDDEN to tr(R.string.handle_hidden_short)
+    )
+
     private val mediaEntity = Entity(Entity.Kind.MEDIA_PLAYER, "lecteur", tr(R.string.entity_lecteur)).icon("mdi:speaker")
 
     private val entities = listOf(
         mediaEntity, screenCamera, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
-        updateStatus, installUpdate
+        updateStatus, installUpdate,
+        setListen, setOnDevice, setSensitivity, setScreensaver, setScreensaverMinutes, setReturnSeconds,
+        setAutoUpdate, setHandle, setUrl
     )
 
     /** Diagnostic du micro toutes les 5 s : niveau (crête) et secondes de son envoyées à HA. */
@@ -217,6 +251,9 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setVoiceHandler(assistant)
         srv.setState(jarvisState, JARVIS_LABELS[Jarvis.State.OFF] ?: "")
         srv.setState(mediaEntity, tabletPlayer.state())
+        setSensitivity.options = sensitivityLabels
+        setHandle.options = handleLabels.values.toList()
+        reportSettings()
         srv.setState(screen, AppState.screenOn)
         srv.setState(brightness, if (AppState.brightness < 0) 100f else AppState.brightness)
         srv.setState(currentApp, AppState.currentApp)
@@ -323,8 +360,51 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onSwitch(entity: Entity, state: Boolean) {
         main.post {
-            if (entity === screen) setScreen(state)
+            val prefs = Prefs(this)
+            when {
+                entity === screen -> setScreen(state)
+                entity === setListen -> {
+                    prefs.jarvisWakeWord = state
+                    jarvis?.onSettingsChanged()
+                }
+                entity === setOnDevice -> {
+                    if (state) WakeWordDetector.clearCrash(this)
+                    prefs.jarvisOnDevice = state
+                    jarvis?.onSettingsChanged()
+                }
+                entity === setScreensaver -> prefs.screensaverEnabled = state
+                entity === setAutoUpdate -> prefs.autoUpdate = state
+            }
+            reportSettings()
         }
+    }
+
+    override fun onText(entity: Entity, value: String) {
+        main.post {
+            if (entity === setUrl) {
+                val url = value.trim().trimEnd('/')
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    Prefs(this).haUrl = url
+                    AppState.controller?.applySettings()
+                }
+            }
+            reportSettings()
+        }
+    }
+
+    /** Pousse vers HA les réglages actuels (au démarrage et après chaque changement, ici ou dans les réglages). */
+    fun reportSettings() {
+        val prefs = Prefs(this)
+        val srv = server ?: return
+        srv.setState(setListen, prefs.jarvisWakeWord)
+        srv.setState(setOnDevice, prefs.jarvisOnDevice)
+        srv.setState(setSensitivity, sensitivityLabels.getOrElse(prefs.jarvisSensitivity) { sensitivityLabels[0] })
+        srv.setState(setScreensaver, prefs.screensaverEnabled)
+        srv.setState(setScreensaverMinutes, prefs.screensaverMinutes.toFloat())
+        srv.setState(setReturnSeconds, prefs.returnSeconds.toFloat())
+        srv.setState(setAutoUpdate, prefs.autoUpdate)
+        srv.setState(setHandle, handleLabels[prefs.handlePosition] ?: handleLabels.values.first())
+        srv.setState(setUrl, prefs.haUrl)
     }
 
     /** Volume des sons (Jarvis, annonces, sonnette) = volume « médias » de la tablette, en %. */
@@ -470,6 +550,12 @@ class ApiService : Service(), EsphomeServer.Handler {
                 server?.setState(brightness, AppState.brightness)
             } else if (entity === volume) {
                 setVolume(value)
+            } else if (entity === setScreensaverMinutes) {
+                Prefs(this).screensaverMinutes = value.toInt().coerceIn(1, 240)
+                reportSettings()
+            } else if (entity === setReturnSeconds) {
+                Prefs(this).returnSeconds = value.toInt().coerceIn(10, 3600)
+                reportSettings()
             }
         }
     }
@@ -488,6 +574,23 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onSelect(entity: Entity, option: String) {
         main.post {
+            if (entity === setSensitivity) {
+                val index = sensitivityLabels.indexOf(option)
+                if (index >= 0) {
+                    Prefs(this).jarvisSensitivity = index
+                    jarvis?.reloadVoiceSettings()
+                }
+                reportSettings()
+                return@post
+            }
+            if (entity === setHandle) {
+                handleLabels.entries.firstOrNull { it.value == option }?.let {
+                    Prefs(this).handlePosition = it.key
+                    AppState.controller?.applySettings()
+                }
+                reportSettings()
+                return@post
+            }
             if (entity !== openSelect || !openTargets.containsKey(option)) return@post
             val packageName = openTargets[option]
             if (packageName == null) showDashboard(home = true) else openApp(packageName)

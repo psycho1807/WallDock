@@ -23,6 +23,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Commandes : écran, luminosité, volume, ouvrir une appli ou une page, revenir au tableau de bord, recharger.
 - Actions : `parler`, `jouer_son`, `ouvrir_page`, `ouvrir_appli`, `afficher_alerte` (popup plein écran avec compte à rebours), `afficher_camera` (une caméra en plein écran : `camera: camera.sonnette` pour son image, ou une page du tableau de bord comme `/sonnette/live` pour la vidéo en direct), `fermer_alerte`.
 - Caméra « Capture d'écran » : ce qu'affiche la tablette, visible dans HA.
+- Réglages modifiables depuis HA (catégorie Configuration de l'appareil) : écoute et sensibilité de Jarvis, écran de veille, délai de retour, poignée du dock, adresse du tableau de bord, mises à jour automatiques.
 
 **Jarvis, assistant vocal** (satellite Assist)
 - « Hey Jarvis » reconnu sur la tablette (modèles openWakeWord) ou par Home Assistant.

@@ -175,4 +175,17 @@
     <string name="backup_failed">Impossible d’écrire le fichier</string>
     <string name="backup_restored">Réglages restaurés, WallDock redémarre…</string>
     <string name="backup_invalid">Ce fichier n’est pas une sauvegarde WallDock</string>
+    <string name="entity_set_listen">Écouter « Hey Jarvis »</string>
+    <string name="entity_set_on_device">Reconnaître « Hey Jarvis » sur la tablette</string>
+    <string name="entity_set_sensitivity">Sensibilité « Hey Jarvis »</string>
+    <string name="entity_set_screensaver">Écran de veille</string>
+    <string name="entity_set_screensaver_minutes">Délai de l’écran de veille</string>
+    <string name="entity_set_return">Retour au tableau de bord après</string>
+    <string name="entity_set_auto_update">Mises à jour automatiques</string>
+    <string name="entity_set_handle">Poignée du dock</string>
+    <string name="entity_set_url">Adresse du tableau de bord</string>
+    <string name="sens_short_normal">Normale</string>
+    <string name="sens_short_high">Élevée</string>
+    <string name="sens_short_very_high">Très élevée</string>
+    <string name="handle_hidden_short">Cachée (glisser depuis le bord droit)</string>
 </resources>

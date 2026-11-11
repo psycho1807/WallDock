@@ -7,7 +7,7 @@ import java.util.List;
 /** Une entité exposée à Home Assistant (capteur, interrupteur, bouton…). */
 public final class Entity {
 
-    public enum Kind { SENSOR, BINARY_SENSOR, SWITCH, NUMBER, BUTTON, TEXT_SENSOR, SELECT, MEDIA_PLAYER, CAMERA }
+    public enum Kind { SENSOR, BINARY_SENSOR, SWITCH, NUMBER, BUTTON, TEXT_SENSOR, SELECT, MEDIA_PLAYER, CAMERA, TEXT }
 
     /** État d'un lecteur multimédia (entité MEDIA_PLAYER). */
     public static final class MediaState {
