@@ -71,11 +71,31 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val jarvisState = Entity(Entity.Kind.TEXT_SENSOR, "jarvis", "Jarvis").icon("mdi:account-voice")
     private val talkToJarvis = Entity(Entity.Kind.BUTTON, "parler_a_jarvis", "Parler à Jarvis").icon("mdi:microphone")
 
+    private val micLevel = Entity(Entity.Kind.SENSOR, "niveau_micro", "Niveau du micro")
+        .unit("%").measurement().icon("mdi:microphone-outline").category(Entity.CATEGORY_DIAGNOSTIC)
+    private val audioSent = Entity(Entity.Kind.SENSOR, "son_envoye", "Son envoyé à HA")
+        .unit("s").icon("mdi:upload-network").category(Entity.CATEGORY_DIAGNOSTIC)
+
     private val entities = listOf(
-        jarvisState, talkToJarvis,
+        jarvisState, talkToJarvis, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate
     )
+
+    /** Diagnostic du micro toutes les 5 s : niveau (crête) et secondes de son envoyées à HA. */
+    private var peakLevel = 0f
+    private val micReport = object : Runnable {
+        override fun run() {
+            val assistant = jarvis
+            if (assistant != null) {
+                val level = if (assistant.isRecording) assistant.micLevel else 0f
+                peakLevel = maxOf(peakLevel * 0.5f, level)
+                server?.setState(micLevel, (peakLevel * 100f).toInt().toFloat())
+                server?.setState(audioSent, (assistant.chunksSent * 64 / 1000).toFloat())
+            }
+            main.postDelayed(this, 5_000)
+        }
+    }
 
     private val updateListener: (String) -> Unit = { server?.setState(updateStatus, it) }
 
@@ -171,6 +191,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(updateStatus, Updater.status)
         Updater.addListener(updateListener)
         main.postDelayed(updateCheck, 60_000)
+        main.postDelayed(micReport, 5_000)
         alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
 
         tts = TextToSpeech(this) { status ->
@@ -206,6 +227,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         jarvis?.release()
         jarvis = null
         main.removeCallbacks(updateCheck)
+        main.removeCallbacks(micReport)
         Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
         player?.release()

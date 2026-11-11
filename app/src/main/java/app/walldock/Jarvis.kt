@@ -42,6 +42,16 @@ class Jarvis(
 
     @Volatile
     private var recording = false
+
+    /** Niveau sonore actuel du micro (0–1) et nombre de blocs envoyés à HA, pour le diagnostic. */
+    @Volatile
+    var micLevel = 0f
+        private set
+    @Volatile
+    var chunksSent = 0L
+        private set
+    val isRecording: Boolean
+        get() = recording
     private var recorder: AudioRecord? = null
     private var recordThread: Thread? = null
 
@@ -383,7 +393,10 @@ class Jarvis(
                 if (n < 0) break
                 continue
             }
-            if (overlay.isShowing) overlay.level = rms(buffer, n)
+            val level = rms(buffer, n)
+            micLevel = level
+            if (overlay.isShowing) overlay.level = level
+            if (streaming) chunksSent++
             if (streaming) server.voiceAudio(buffer, n)
         }
     }
