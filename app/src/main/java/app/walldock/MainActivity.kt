@@ -274,11 +274,30 @@ class MainActivity : Activity(), DashboardController {
         applyHandlePosition()
         overlayWarning.visibility = if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
         handlePendingRequests()
+        askMicrophoneOnce()
         lastTouch = SystemClock.elapsedRealtime()
         handler.removeCallbacks(screensaverCheck)
         handler.postDelayed(screensaverCheck, 15_000)
         handler.removeCallbacks(healthCheck)
         handler.postDelayed(healthCheck, 5_000)
+    }
+
+    /** Jarvis : demande l'accès au micro une seule fois (ensuite via les réglages). */
+    private fun askMicrophoneOnce() {
+        if (!prefs.jarvisWakeWord) return
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            ApiService.instance?.onMicrophoneChanged()
+            return
+        }
+        val sp = getSharedPreferences("walldock", MODE_PRIVATE)
+        if (sp.getBoolean("mic_asked", false)) return
+        sp.edit().putBoolean("mic_asked", true).apply()
+        requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_MIC) ApiService.instance?.onMicrophoneChanged()
     }
 
     /** Teste Home Assistant en arrière-plan ; bascule sur l'écran de secours ou recharge au retour. */
@@ -481,6 +500,10 @@ class MainActivity : Activity(), DashboardController {
             icon.setImageDrawable(app.icon)
             dockRow.addView(dockItem(app.label, icon) { launchApp(app.packageName) })
         }
+        dockRow.addView(dockItem("Jarvis", glyph("◉")) {
+            setDockVisible(false)
+            ApiService.instance?.jarvis?.talk()
+        })
         dockRow.addView(dockItem("Recharger", glyph("⟳")) {
             web.reload()
             setDockVisible(false)
@@ -562,5 +585,9 @@ class MainActivity : Activity(), DashboardController {
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
         }
+    }
+
+    companion object {
+        const val REQUEST_MIC = 42
     }
 }

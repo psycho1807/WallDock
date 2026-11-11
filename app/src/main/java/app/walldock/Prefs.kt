@@ -52,6 +52,20 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_AUTO_UPDATE, true)
         set(value) = sp.edit().putBoolean(KEY_AUTO_UPDATE, value).apply()
 
+    /** Jarvis écoute « Hey Jarvis » en permanence (sinon seulement via le bouton). */
+    var jarvisWakeWord: Boolean
+        get() = sp.getBoolean(KEY_JARVIS_WAKE, true)
+        set(value) = sp.edit().putBoolean(KEY_JARVIS_WAKE, value).apply()
+
+    /** Adresse complète d'un son ou d'une page : les chemins (/local/…) sont rattachés à HA. */
+    fun absoluteUrl(address: String): String {
+        val trimmed = address.trim()
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+        val base = haUrl
+        val origin = base.substringBefore("://") + "://" + base.substringAfter("://").substringBefore("/")
+        return origin + "/" + trimmed.trimStart('/')
+    }
+
     val isConfigured: Boolean
         get() = haUrl.isNotBlank() && pin.isNotBlank()
 
@@ -61,6 +75,7 @@ class Prefs(context: Context) {
         const val HANDLE_RIGHT_MIDDLE = "right_middle"
         const val HANDLE_HIDDEN = "hidden"
 
+        private const val KEY_JARVIS_WAKE = "jarvis_wake_word"
         private const val KEY_AUTO_UPDATE = "auto_update"
         private const val KEY_HANDLE = "handle_position"
         private const val KEY_SAVER = "screensaver_enabled"

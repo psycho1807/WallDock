@@ -34,6 +34,45 @@ public final class EsphomeServer {
         void onService(UserService service, Map<String, Object> args);
     }
 
+    /** Événements de l'assistant vocal envoyés par Home Assistant (fil du client réseau). */
+    public interface VoiceHandler {
+        /** HA s'abonne (ou se désabonne) à l'assistant vocal de l'appareil. */
+        void onVoiceSubscribed(boolean subscribed);
+        /** Réponse de HA à une demande de démarrage : erreur = le pipeline n'a pas pu démarrer. */
+        void onVoiceResponse(boolean error);
+        /** Étape du pipeline (VOICE_EVENT_*) avec ses données (texte reconnu, adresse du son, etc.). */
+        void onVoiceEvent(int eventType, Map<String, String> data);
+        /** Annonce à lire (assist_satellite.announce / start_conversation). */
+        void onAnnounce(String mediaId, String text, String preannounceMediaId, boolean startConversation);
+        /** HA demande d'arrêter le pipeline en cours. */
+        void onVoiceStopRequested();
+    }
+
+    // Fonctions d'assistant vocal annoncées à HA (DeviceInfo, champ 17)
+    public static final int VOICE_FEATURE_VOICE_ASSISTANT = 1;
+    public static final int VOICE_FEATURE_API_AUDIO = 1 << 2;
+    public static final int VOICE_FEATURE_ANNOUNCE = 1 << 4;
+    public static final int VOICE_FEATURE_START_CONVERSATION = 1 << 5;
+
+    // Drapeaux d'une demande de pipeline
+    public static final int VOICE_FLAG_USE_VAD = 1;
+    public static final int VOICE_FLAG_USE_WAKE_WORD = 2;
+
+    // Étapes du pipeline (VoiceAssistantEvent)
+    public static final int VOICE_EVENT_ERROR = 0;
+    public static final int VOICE_EVENT_RUN_START = 1;
+    public static final int VOICE_EVENT_RUN_END = 2;
+    public static final int VOICE_EVENT_STT_START = 3;
+    public static final int VOICE_EVENT_STT_END = 4;
+    public static final int VOICE_EVENT_INTENT_START = 5;
+    public static final int VOICE_EVENT_INTENT_END = 6;
+    public static final int VOICE_EVENT_TTS_START = 7;
+    public static final int VOICE_EVENT_TTS_END = 8;
+    public static final int VOICE_EVENT_WAKE_WORD_START = 9;
+    public static final int VOICE_EVENT_WAKE_WORD_END = 10;
+    public static final int VOICE_EVENT_STT_VAD_START = 11;
+    public static final int VOICE_EVENT_STT_VAD_END = 12;
+
     /** Fiche de l'appareil telle que Home Assistant l'affiche. */
     public static final class DeviceInfo {
         public String name = "walldock";          // identifiant réseau, minuscules et tirets
@@ -43,6 +82,8 @@ public final class EsphomeServer {
         public String manufacturer = "WallDock";
         public String projectVersion = "0.2.0";
         public String suggestedArea = "";
+        /** Fonctions vocales (VOICE_FEATURE_*), 0 = pas d'assistant vocal. */
+        public int voiceFeatures = 0;
     }
 
     public static final int DEFAULT_PORT = 6053;
@@ -80,6 +121,16 @@ public final class EsphomeServer {
     private static final int LIST_SELECT = 52;
     private static final int SELECT_STATE = 53;
     private static final int SELECT_COMMAND = 54;
+    private static final int SUBSCRIBE_VOICE_ASSISTANT = 89;
+    private static final int VOICE_ASSISTANT_REQUEST = 90;
+    private static final int VOICE_ASSISTANT_RESPONSE = 91;
+    private static final int VOICE_ASSISTANT_EVENT = 92;
+    private static final int VOICE_ASSISTANT_AUDIO = 106;
+    private static final int VOICE_ASSISTANT_ANNOUNCE_REQUEST = 119;
+    private static final int VOICE_ASSISTANT_ANNOUNCE_FINISHED = 120;
+    private static final int VOICE_ASSISTANT_CONFIGURATION_REQUEST = 121;
+    private static final int VOICE_ASSISTANT_CONFIGURATION_RESPONSE = 122;
+    private static final int VOICE_ASSISTANT_SET_CONFIGURATION = 123;
 
     private static final int API_VERSION_MAJOR = 1;
     private static final int API_VERSION_MINOR = 10;
@@ -95,6 +146,10 @@ public final class EsphomeServer {
         thread.setDaemon(true);
         return thread;
     });
+
+    private volatile VoiceHandler voiceHandler;
+    /** Connexion HA abonnée à l'assistant vocal (une seule à la fois). */
+    private volatile Client voiceClient;
 
     private volatile ServerSocket serverSocket;
     private volatile boolean running;
@@ -156,6 +211,61 @@ public final class EsphomeServer {
             for (Client client : clients) {
                 if (client.subscribed) client.sendState(entity);
             }
+        });
+    }
+
+    public void setVoiceHandler(VoiceHandler handler) {
+        this.voiceHandler = handler;
+    }
+
+    /** Vrai quand HA écoute l'assistant vocal de l'appareil. */
+    public boolean isVoiceSubscribed() {
+        return voiceClient != null;
+    }
+
+    /**
+     * Demande à HA de lancer un pipeline (fil quelconque, réseau sur le fil d'envoi).
+     * flags : VOICE_FLAG_USE_WAKE_WORD pour commencer par la détection du mot d'activation.
+     */
+    public void voiceStart(String conversationId, int flags, String wakeWordPhrase) {
+        sender.execute(() -> {
+            Client client = voiceClient;
+            if (client == null) return;
+            byte[] audioSettings = new Proto.Writer().floatValue(3, 1.0f).bytes();
+            client.trySend(VOICE_ASSISTANT_REQUEST, new Proto.Writer()
+                .bool(1, true)
+                .string(2, conversationId)
+                .varint(3, flags)
+                .message(4, audioSettings)
+                .string(5, wakeWordPhrase)
+                .bytes());
+        });
+    }
+
+    /** Demande à HA d'arrêter le pipeline en cours. */
+    public void voiceStop() {
+        sender.execute(() -> {
+            Client client = voiceClient;
+            if (client != null) client.trySend(VOICE_ASSISTANT_REQUEST, new Proto.Writer().bool(1, false).bytes());
+        });
+    }
+
+    /**
+     * Envoie un bloc de son du micro (PCM 16 bits, 16 kHz, mono).
+     * Appelé depuis le fil d'enregistrement : envoi direct, sans file d'attente.
+     */
+    public void voiceAudio(byte[] pcm, int length) {
+        Client client = voiceClient;
+        if (client == null) return;
+        byte[] data = length == pcm.length ? pcm : java.util.Arrays.copyOf(pcm, length);
+        client.trySend(VOICE_ASSISTANT_AUDIO, new Proto.Writer().message(1, data).bytes());
+    }
+
+    /** Fin de lecture d'une annonce. */
+    public void voiceAnnounceFinished(boolean success) {
+        sender.execute(() -> {
+            Client client = voiceClient;
+            if (client != null) client.trySend(VOICE_ASSISTANT_ANNOUNCE_FINISHED, new Proto.Writer().bool(1, success).bytes());
         });
     }
 
@@ -292,6 +402,56 @@ public final class EsphomeServer {
                     if (entity != null && handler != null) handler.onButton(entity);
                     return true;
                 }
+                case SUBSCRIBE_VOICE_ASSISTANT: {
+                    boolean subscribe = Proto.getBool(Proto.read(payload), 1);
+                    if (subscribe) {
+                        voiceClient = this;
+                    } else if (voiceClient == this) {
+                        voiceClient = null;
+                    }
+                    VoiceHandler vh = voiceHandler;
+                    if (vh != null) vh.onVoiceSubscribed(voiceClient != null);
+                    return true;
+                }
+                case VOICE_ASSISTANT_REQUEST: {
+                    // HA demande l'arrêt du pipeline (start = faux)
+                    Map<Integer, Object> f = Proto.read(payload);
+                    VoiceHandler vh = voiceHandler;
+                    if (!Proto.getBool(f, 1) && vh != null) vh.onVoiceStopRequested();
+                    return true;
+                }
+                case VOICE_ASSISTANT_RESPONSE: {
+                    VoiceHandler vh = voiceHandler;
+                    if (vh != null) vh.onVoiceResponse(Proto.getBool(Proto.read(payload), 2));
+                    return true;
+                }
+                case VOICE_ASSISTANT_EVENT: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    Map<String, String> data = new HashMap<>();
+                    for (byte[] item : Proto.readRepeated(payload, 2)) {
+                        Map<Integer, Object> kv = Proto.read(item);
+                        data.put(Proto.getString(kv, 1), Proto.getString(kv, 2));
+                    }
+                    VoiceHandler vh = voiceHandler;
+                    if (vh != null) vh.onVoiceEvent(Proto.getInt(f, 1), data);
+                    return true;
+                }
+                case VOICE_ASSISTANT_ANNOUNCE_REQUEST: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    VoiceHandler vh = voiceHandler;
+                    if (vh != null) {
+                        vh.onAnnounce(Proto.getString(f, 1), Proto.getString(f, 2), Proto.getString(f, 3), Proto.getBool(f, 4));
+                    } else {
+                        send(VOICE_ASSISTANT_ANNOUNCE_FINISHED, new Proto.Writer().bool(1, false).bytes());
+                    }
+                    return true;
+                }
+                case VOICE_ASSISTANT_CONFIGURATION_REQUEST:
+                    // Le mot d'activation est détecté par HA (openWakeWord) : rien à proposer côté appareil
+                    send(VOICE_ASSISTANT_CONFIGURATION_RESPONSE, new Proto.Writer().varint(3, 1).bytes());
+                    return true;
+                case VOICE_ASSISTANT_SET_CONFIGURATION:
+                    return true;
                 default:
                     // Abonnements aux journaux, services HA, états HA, heure… : ignorés sans erreur
                     return true;
@@ -311,6 +471,7 @@ public final class EsphomeServer {
                 .string(12, info.manufacturer)
                 .string(13, info.friendlyName)
                 .string(16, info.suggestedArea)
+                .varint(17, info.voiceFeatures)
                 .bytes();
         }
 
@@ -452,7 +613,21 @@ public final class EsphomeServer {
             return data;
         }
 
+        /** Envoi qui ferme la connexion en cas d'erreur au lieu de lever une exception. */
+        void trySend(int type, byte[] payload) {
+            try {
+                send(type, payload);
+            } catch (IOException e) {
+                close();
+            }
+        }
+
         void close() {
+            if (voiceClient == this) {
+                voiceClient = null;
+                VoiceHandler vh = voiceHandler;
+                if (vh != null) vh.onVoiceSubscribed(false);
+            }
             clients.remove(this);
             try {
                 socket.close();

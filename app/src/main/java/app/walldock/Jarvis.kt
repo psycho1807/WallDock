@@ -1,0 +1,449 @@
+package app.walldock
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioRecord
+import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.media.ToneGenerator
+import android.os.Handler
+import android.os.Looper
+import app.walldock.esphome.EsphomeServer
+import kotlin.math.sqrt
+
+/**
+ * Jarvis : la tablette devient un satellite vocal de Home Assistant.
+ * Le micro est envoyé à HA (16 kHz, 16 bits, mono) ; HA détecte « Hey Jarvis » (openWakeWord),
+ * reconnaît la phrase, répond, et la tablette lit la réponse.
+ */
+class Jarvis(
+    private val context: Context,
+    private val server: EsphomeServer,
+    private val wakeUp: () -> Unit
+) : EsphomeServer.VoiceHandler {
+
+    enum class State { OFF, WAITING, LISTENING, THINKING, SPEAKING }
+
+    private val main = Handler(Looper.getMainLooper())
+    private val overlay = JarvisOverlay(context) { main.post { cancel() } }
+
+    @Volatile
+    var state = State.OFF
+        private set
+
+    /** Vrai pendant que le son du micro part vers HA. */
+    @Volatile
+    private var streaming = false
+
+    @Volatile
+    private var recording = false
+    private var recorder: AudioRecord? = null
+    private var recordThread: Thread? = null
+
+    private var player: MediaPlayer? = null
+    private var conversationId = ""
+    private var continueConversation = false
+    private var runEnded = false
+    private var speechPending = false
+    private var errorBackoffMs = 1_000L
+    /** Une relance après erreur est déjà programmée : la fin du pipeline ne doit pas relancer tout de suite. */
+    private var restartScheduled = false
+    private val restartRunnable = Runnable { restartWaiting() }
+
+    /** Prévenu (fil principal) quand l'état change, pour l'afficher dans HA. */
+    var onStateChanged: ((State) -> Unit)? = null
+
+    val micGranted: Boolean
+        get() = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private val wakeWordWanted: Boolean
+        get() = Prefs(context).jarvisWakeWord && micGranted
+
+    // ---- Commandes ----
+
+    /** Parler à Jarvis sans dire « Hey Jarvis » (bouton du dock ou de HA). */
+    fun talk() = main.post {
+        if (!server.isVoiceSubscribed) {
+            context.toast("Jarvis n’est pas encore connecté à Home Assistant")
+            return@post
+        }
+        if (!micGranted) {
+            context.toast("Autorise le micro dans les réglages de WallDock")
+            return@post
+        }
+        if (state == State.WAITING || state == State.LISTENING) server.voiceStop()
+        stopPlayback()
+        startConversationTurn(conversationId)
+    }
+
+    /** Toucher l'écran de Jarvis : on arrête tout et on revient en veille. */
+    fun cancel() {
+        if (state != State.WAITING && state != State.OFF) server.voiceStop()
+        stopPlayback()
+        streaming = false
+        continueConversation = false
+        conversationId = ""
+        overlay.hide()
+        restartWaiting()
+    }
+
+    /** Réglage ou autorisation du micro modifiés. */
+    fun onSettingsChanged() = main.post {
+        if (state == State.WAITING || state == State.OFF) {
+            if (state == State.WAITING) server.voiceStop()
+            restartWaiting()
+        }
+    }
+
+    fun release() {
+        main.removeCallbacksAndMessages(null)
+        streaming = false
+        stopMic()
+        stopPlayback()
+        overlay.hide()
+        setState(State.OFF)
+    }
+
+    // ---- Événements de Home Assistant (fil réseau → fil principal) ----
+
+    override fun onVoiceSubscribed(subscribed: Boolean) {
+        main.post {
+            if (subscribed) {
+                errorBackoffMs = 1_000L
+                main.removeCallbacks(restartRunnable)
+                main.postDelayed(restartRunnable, 1_000)
+            } else {
+                main.removeCallbacks(restartRunnable)
+                streaming = false
+                stopMic()
+                stopPlayback()
+                overlay.hide()
+                setState(State.OFF)
+            }
+        }
+    }
+
+    override fun onVoiceResponse(error: Boolean) {
+        if (!error) return
+        main.post {
+            streaming = false
+            if (state != State.WAITING) overlay.showError("Jarvis est indisponible")
+            scheduleRestartAfterError()
+        }
+    }
+
+    override fun onVoiceStopRequested() {
+        streaming = false
+    }
+
+    override fun onVoiceEvent(eventType: Int, data: Map<String, String>) {
+        main.post { handleEvent(eventType, data) }
+    }
+
+    override fun onAnnounce(mediaId: String, text: String, preannounceMediaId: String, startConversation: Boolean) {
+        main.post {
+            if (state == State.WAITING || state == State.LISTENING) server.voiceStop()
+            streaming = false
+            stopPlayback()
+            wakeUp()
+            setState(State.SPEAKING)
+            overlay.show(JarvisOverlay.Mode.SPEAKING)
+            overlay.setQuestion("")
+            overlay.setAnswer(text)
+            val afterAnnounce = {
+                server.voiceAnnounceFinished(true)
+                if (startConversation) {
+                    startConversationTurn("")
+                } else {
+                    overlay.hideAfter(1_500)
+                    restartWaiting()
+                }
+            }
+            val playMain = { play(mediaId, afterAnnounce) }
+            if (preannounceMediaId.isNotBlank()) play(preannounceMediaId, playMain) else playMain()
+        }
+    }
+
+    private fun handleEvent(type: Int, data: Map<String, String>) {
+        when (type) {
+            EsphomeServer.VOICE_EVENT_WAKE_WORD_END -> {
+                // « Hey Jarvis » entendu : HA enchaîne sur la reconnaissance de la phrase
+                wakeUp()
+                beep()
+                setState(State.LISTENING)
+                overlay.show(JarvisOverlay.Mode.LISTENING)
+            }
+            EsphomeServer.VOICE_EVENT_STT_VAD_END -> {
+                streaming = false
+                setState(State.THINKING)
+                overlay.show(JarvisOverlay.Mode.THINKING)
+            }
+            EsphomeServer.VOICE_EVENT_STT_END -> {
+                streaming = false
+                setState(State.THINKING)
+                overlay.show(JarvisOverlay.Mode.THINKING)
+                overlay.setQuestion(data["text"] ?: "")
+            }
+            EsphomeServer.VOICE_EVENT_INTENT_END -> {
+                conversationId = data["conversation_id"] ?: conversationId
+                continueConversation = data["continue_conversation"] == "1"
+            }
+            EsphomeServer.VOICE_EVENT_TTS_START -> overlay.setAnswer(data["text"] ?: "")
+            EsphomeServer.VOICE_EVENT_TTS_END -> {
+                val url = data["url"] ?: ""
+                if (url.isNotBlank()) {
+                    speechPending = true
+                    setState(State.SPEAKING)
+                    overlay.show(JarvisOverlay.Mode.SPEAKING)
+                    play(url) {
+                        speechPending = false
+                        if (runEnded) finishRun()
+                    }
+                }
+            }
+            EsphomeServer.VOICE_EVENT_RUN_END -> {
+                streaming = false
+                runEnded = true
+                if (!speechPending) finishRun()
+            }
+            EsphomeServer.VOICE_EVENT_ERROR -> {
+                streaming = false
+                val code = data["code"] ?: ""
+                if (state == State.WAITING) {
+                    // Pas de mot d'activation, moteur indisponible… : on relance l'écoute
+                    if (code != "no_wake_word") scheduleRestartAfterError()
+                } else {
+                    val message = when (code) {
+                        "stt-no-text-recognized", "stt-stream-failed" -> "Je n’ai pas compris"
+                        "stt-timeout" -> "Je n’ai rien entendu"
+                        else -> data["message"]?.takeIf { it.isNotBlank() } ?: "Une erreur est survenue"
+                    }
+                    overlay.showError(message)
+                    continueConversation = false
+                }
+            }
+        }
+    }
+
+    // ---- Déroulé d'une conversation ----
+
+    /** Fin d'un échange : on continue la conversation si HA le demande, sinon retour en veille. */
+    private fun finishRun() {
+        runEnded = false
+        if (restartScheduled) return
+        if (continueConversation && state != State.OFF) {
+            continueConversation = false
+            startConversationTurn(conversationId)
+            return
+        }
+        conversationId = ""
+        if (overlay.isShowing) overlay.hideAfter(if (state == State.SPEAKING) 1_200 else 2_500)
+        restartWaiting()
+    }
+
+    /** Lance un tour de parole sans mot d'activation (écoute immédiate). */
+    private fun startConversationTurn(conversation: String) {
+        if (!ensureMic()) return
+        wakeUp()
+        beep()
+        setState(State.LISTENING)
+        overlay.show(JarvisOverlay.Mode.LISTENING)
+        startRun(conversation, EsphomeServer.VOICE_FLAG_USE_VAD)
+    }
+
+    /** Revient à l'écoute de « Hey Jarvis » (ou coupe le micro si l'option est désactivée). */
+    private fun restartWaiting() {
+        main.removeCallbacks(restartRunnable)
+        restartScheduled = false
+        if (!server.isVoiceSubscribed) {
+            setState(State.OFF)
+            return
+        }
+        if (!wakeWordWanted) {
+            streaming = false
+            stopMic()
+            setState(State.OFF)
+            return
+        }
+        if (!ensureMic()) {
+            setState(State.OFF)
+            return
+        }
+        setState(State.WAITING)
+        startRun("", EsphomeServer.VOICE_FLAG_USE_WAKE_WORD or EsphomeServer.VOICE_FLAG_USE_VAD)
+    }
+
+    private fun startRun(conversation: String, flags: Int) {
+        runEnded = false
+        speechPending = false
+        continueConversation = false
+        streaming = true
+        server.voiceStart(conversation, flags, "")
+    }
+
+    private fun scheduleRestartAfterError() {
+        restartScheduled = true
+        main.removeCallbacks(restartRunnable)
+        main.postDelayed(restartRunnable, errorBackoffMs)
+        errorBackoffMs = (errorBackoffMs * 2).coerceAtMost(60_000L)
+    }
+
+    private fun setState(newState: State) {
+        if (newState == State.LISTENING || newState == State.SPEAKING) errorBackoffMs = 1_000L
+        if (state == newState) return
+        state = newState
+        onStateChanged?.invoke(newState)
+    }
+
+    // ---- Micro ----
+
+    @SuppressLint("MissingPermission")
+    private fun ensureMic(): Boolean {
+        if (recording) return true
+        if (!micGranted) return false
+        val minSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        val record = try {
+            AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                maxOf(minSize, CHUNK_BYTES * 4)
+            )
+        } catch (e: Exception) {
+            return false
+        }
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            record.release()
+            return false
+        }
+        try {
+            record.startRecording()
+        } catch (e: Exception) {
+            record.release()
+            return false
+        }
+        recorder = record
+        recording = true
+        val thread = Thread({ recordLoop(record) }, "jarvis-mic")
+        thread.priority = Thread.MAX_PRIORITY
+        recordThread = thread
+        thread.start()
+        return true
+    }
+
+    private fun recordLoop(record: AudioRecord) {
+        val buffer = ByteArray(CHUNK_BYTES)
+        while (recording) {
+            val n = record.read(buffer, 0, buffer.size)
+            if (n <= 0) {
+                if (n < 0) break
+                continue
+            }
+            if (overlay.isShowing) overlay.level = rms(buffer, n)
+            if (streaming) server.voiceAudio(buffer, n)
+        }
+    }
+
+    private fun stopMic() {
+        recording = false
+        recordThread?.join(500)
+        recordThread = null
+        recorder?.let {
+            try {
+                it.stop()
+            } catch (e: Exception) {
+                // déjà arrêté
+            }
+            it.release()
+        }
+        recorder = null
+    }
+
+    private fun rms(buffer: ByteArray, length: Int): Float {
+        var sum = 0.0
+        var count = 0
+        var i = 0
+        while (i + 1 < length) {
+            val sample = (buffer[i].toInt() and 0xFF) or (buffer[i + 1].toInt() shl 8)
+            sum += sample.toDouble() * sample
+            count++
+            i += 2
+        }
+        if (count == 0) return 0f
+        return (sqrt(sum / count) / 6000.0).toFloat().coerceIn(0f, 1f)
+    }
+
+    // ---- Lecture des réponses ----
+
+    private fun play(address: String, onDone: () -> Unit) {
+        stopPlayback()
+        val url = Prefs(context).absoluteUrl(address)
+        val media = MediaPlayer()
+        player = media
+        var finished = false
+        val done = {
+            if (!finished) {
+                finished = true
+                media.release()
+                if (player === media) player = null
+                onDone()
+            }
+        }
+        try {
+            media.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            media.setDataSource(url)
+            media.setOnPreparedListener { it.start() }
+            media.setOnCompletionListener { done() }
+            media.setOnErrorListener { _, _, _ ->
+                done()
+                true
+            }
+            media.prepareAsync()
+        } catch (e: Exception) {
+            done()
+        }
+    }
+
+    private fun stopPlayback() {
+        player?.let {
+            try {
+                it.stop()
+            } catch (e: Exception) {
+                // pas encore prêt
+            }
+            it.release()
+        }
+        player = null
+        speechPending = false
+    }
+
+    private fun beep() {
+        try {
+            val tone = ToneGenerator(AudioManager.STREAM_MUSIC, 45)
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP, 120)
+            main.postDelayed({ tone.release() }, 400)
+        } catch (e: Exception) {
+            // pas de son disponible
+        }
+    }
+
+    companion object {
+        private const val SAMPLE_RATE = 16_000
+        /** 1 024 échantillons = 64 ms de son par envoi. */
+        private const val CHUNK_BYTES = 2_048
+
+        const val FEATURES = EsphomeServer.VOICE_FEATURE_VOICE_ASSISTANT or
+            EsphomeServer.VOICE_FEATURE_API_AUDIO or
+            EsphomeServer.VOICE_FEATURE_ANNOUNCE or
+            EsphomeServer.VOICE_FEATURE_START_CONVERSATION
+    }
+}

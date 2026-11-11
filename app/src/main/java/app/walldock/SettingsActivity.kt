@@ -36,6 +36,8 @@ class SettingsActivity : Activity() {
     private lateinit var saverCheck: CheckBox
     private lateinit var saverField: EditText
     private lateinit var updateCheck: CheckBox
+    private lateinit var jarvisCheck: CheckBox
+    private lateinit var jarvisText: TextView
     private lateinit var updateText: TextView
     private val updateListener: (String) -> Unit = { updateText.text = updateLine(it) }
 
@@ -122,6 +124,26 @@ class SettingsActivity : Activity() {
         haStatusText.setLineSpacing(0f, 1.3f)
         column.addView(haStatusText)
 
+        column.addView(heading("Jarvis", 18f))
+        jarvisText = TextView(this)
+        jarvisText.setTextColor(0xFFB0C4E0.toInt())
+        jarvisText.textSize = 14f
+        jarvisText.setLineSpacing(0f, 1.3f)
+        column.addView(jarvisText)
+        jarvisCheck = CheckBox(this)
+        jarvisCheck.text = "Écouter « Hey Jarvis » en permanence"
+        jarvisCheck.setTextColor(Color.WHITE)
+        jarvisCheck.isChecked = prefs.jarvisWakeWord
+        column.addView(jarvisCheck)
+        column.addView(button("Autoriser le micro") {
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                toast("Le micro est déjà autorisé")
+            } else {
+                requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), MainActivity.REQUEST_MIC)
+            }
+        })
+        column.addView(button("Tester Jarvis maintenant") { ApiService.instance?.jarvis?.talk() })
+
         column.addView(heading("Mises à jour", 18f))
         updateText = TextView(this)
         updateText.setTextColor(0xFFB0C4E0.toInt())
@@ -155,12 +177,35 @@ class SettingsActivity : Activity() {
         updateStatus()
         updateHaStatus()
         updateText.text = updateLine(Updater.status)
+        updateJarvisStatus()
         Updater.addListener(updateListener)
     }
 
     override fun onPause() {
         Updater.removeListener(updateListener)
         super.onPause()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == MainActivity.REQUEST_MIC) {
+            ApiService.instance?.onMicrophoneChanged()
+            updateJarvisStatus()
+        }
+    }
+
+    private fun updateJarvisStatus() {
+        val mic = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val state = ApiService.instance?.jarvis?.state
+        jarvisText.text = listOf(
+            if (mic) "✅ Micro autorisé" else "⚠️ Micro non autorisé : Jarvis ne peut pas vous entendre",
+            when (state) {
+                Jarvis.State.WAITING -> "✅ Jarvis attend « Hey Jarvis »"
+                Jarvis.State.OFF, null -> "➖ Jarvis inactif (Home Assistant pas encore connecté, ou écoute désactivée)"
+                else -> "✅ Jarvis est en pleine conversation"
+            },
+            "Le mot « Hey Jarvis » est reconnu par Home Assistant (openWakeWord)."
+        ).joinToString("\n")
     }
 
     private fun updateLine(status: String): String {
@@ -197,6 +242,9 @@ class SettingsActivity : Activity() {
                 prefs.returnSeconds = delay
                 prefs.screensaverEnabled = saverCheck.isChecked
                 prefs.autoUpdate = updateCheck.isChecked
+                val wakeChanged = prefs.jarvisWakeWord != jarvisCheck.isChecked
+                prefs.jarvisWakeWord = jarvisCheck.isChecked
+                if (wakeChanged) ApiService.instance?.jarvis?.onSettingsChanged()
                 if (saverMinutes >= 1) prefs.screensaverMinutes = saverMinutes
                 prefs.dockApps = dockSelection.toList()
                 prefs.videoApps = videoSelection.toSet()

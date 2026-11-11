@@ -68,7 +68,11 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val installUpdate = Entity(Entity.Kind.BUTTON, "installer_mise_a_jour", "Installer la mise à jour")
         .icon("mdi:download").category(Entity.CATEGORY_CONFIG)
 
+    private val jarvisState = Entity(Entity.Kind.TEXT_SENSOR, "jarvis", "Jarvis").icon("mdi:account-voice")
+    private val talkToJarvis = Entity(Entity.Kind.BUTTON, "parler_a_jarvis", "Parler à Jarvis").icon("mdi:microphone")
+
     private val entities = listOf(
+        jarvisState, talkToJarvis,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate
     )
@@ -109,6 +113,10 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     private lateinit var alertOverlay: AlertOverlay
 
+    /** Assistant vocal Jarvis (satellite vocal de HA). */
+    var jarvis: Jarvis? = null
+        private set
+
     /** Choix de la liste « Ouvrir » → nom de paquet (null pour le tableau de bord). */
     private var openTargets: Map<String, String?> = emptyMap()
 
@@ -145,10 +153,16 @@ class ApiService : Service(), EsphomeServer.Handler {
         info.model = "${Build.MANUFACTURER} ${Build.MODEL}"
         info.manufacturer = "WallDock"
         info.projectVersion = BuildConfig.VERSION_NAME
+        info.voiceFeatures = Jarvis.FEATURES
 
         refreshOpenTargets()
         val srv = EsphomeServer(info, entities, services, this, EsphomeServer.DEFAULT_PORT)
         server = srv
+        val assistant = Jarvis(this, srv) { wakeUp() }
+        assistant.onStateChanged = { server?.setState(jarvisState, JARVIS_LABELS[it] ?: "") }
+        jarvis = assistant
+        srv.setVoiceHandler(assistant)
+        srv.setState(jarvisState, JARVIS_LABELS[Jarvis.State.OFF] ?: "")
         srv.setState(screen, AppState.screenOn)
         srv.setState(brightness, if (AppState.brightness < 0) 100f else AppState.brightness)
         srv.setState(currentApp, AppState.currentApp)
@@ -189,6 +203,8 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onDestroy() {
         instance = null
+        jarvis?.release()
+        jarvis = null
         main.removeCallbacks(updateCheck)
         Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
@@ -267,6 +283,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 entity === backToDashboard -> showDashboard(home = true)
                 entity === reload -> AppState.controller?.reloadDashboard()
                 entity === installUpdate -> Updater.check(this, install = true)
+                entity === talkToJarvis -> jarvis?.talk()
             }
         }
     }
@@ -379,12 +396,7 @@ class ApiService : Service(), EsphomeServer.Handler {
     private fun playSound(address: String) {
         val trimmed = address.trim()
         if (trimmed.isEmpty()) return
-        val url = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            trimmed
-        } else {
-            Prefs(this).haUrl.substringBefore("://") + "://" +
-                Prefs(this).haUrl.substringAfter("://").substringBefore("/") + "/" + trimmed.trimStart('/')
-        }
+        val url = Prefs(this).absoluteUrl(trimmed)
         wakeUp()
         player?.release()
         val media = MediaPlayer()
@@ -434,7 +446,7 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     @SuppressLint("WakelockTimeout")
     @Suppress("DEPRECATION")
-    private fun wakeUp() {
+    fun wakeUp() {
         val power = getSystemService(PowerManager::class.java) ?: return
         val lock = power.newWakeLock(
             PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
@@ -504,10 +516,25 @@ class ApiService : Service(), EsphomeServer.Handler {
             .setOngoing(true)
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            // Micro autorisé en arrière-plan (Jarvis) seulement si la permission est accordée
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            try {
+                startForeground(NOTIFICATION_ID, notification, types)
+            } catch (e: Exception) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            }
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+    }
+
+    /** À appeler quand l'écran WallDock est au premier plan et que le micro vient d'être autorisé. */
+    fun onMicrophoneChanged() {
+        startInForeground()
+        jarvis?.onSettingsChanged()
     }
 
     companion object {
@@ -516,6 +543,13 @@ class ApiService : Service(), EsphomeServer.Handler {
         private const val NOTIFICATION_ID = 2
         private const val UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000L
         private const val UPDATE_RETRY_MS = 30 * 60 * 1000L
+        private val JARVIS_LABELS = mapOf(
+            Jarvis.State.OFF to "Inactif",
+            Jarvis.State.WAITING to "En veille",
+            Jarvis.State.LISTENING to "Écoute",
+            Jarvis.State.THINKING to "Réfléchit",
+            Jarvis.State.SPEAKING to "Parle"
+        )
 
         @Volatile
         var instance: ApiService? = null
