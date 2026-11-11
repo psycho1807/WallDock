@@ -255,6 +255,7 @@ class SettingsActivity : Activity() {
                 val wakeChanged = prefs.jarvisWakeWord != jarvisCheck.isChecked
                 prefs.jarvisWakeWord = jarvisCheck.isChecked
                 val modeChanged = prefs.jarvisOnDevice != onDeviceCheck.isChecked
+                if (modeChanged && onDeviceCheck.isChecked) WakeWordDetector.clearCrash(this)
                 prefs.jarvisOnDevice = onDeviceCheck.isChecked
                 if (wakeChanged || modeChanged) ApiService.instance?.jarvis?.onSettingsChanged()
                 if (saverMinutes >= 1) prefs.screensaverMinutes = saverMinutes

@@ -16,12 +16,13 @@ import java.net.URL
  */
 class WakeWordDetector private constructor(dir: File) {
 
-    private val mel = Interpreter(File(dir, MEL_MODEL)).also {
+    private val options = Interpreter.Options().setNumThreads(1).setUseXNNPACK(false)
+    private val mel = Interpreter(File(dir, MEL_MODEL), options).also {
         it.resizeInput(0, intArrayOf(1, WINDOW_SAMPLES))
         it.allocateTensors()
     }
-    private val embedding = Interpreter(File(dir, EMBEDDING_MODEL))
-    private val wakeWord = Interpreter(File(dir, WAKE_MODEL))
+    private val embedding = Interpreter(File(dir, EMBEDDING_MODEL), options)
+    private val wakeWord = Interpreter(File(dir, WAKE_MODEL), options)
 
     // Tampons réutilisés (pas d'allocation toutes les 80 ms)
     private val raw = FloatArray(WINDOW_SAMPLES)
@@ -162,12 +163,49 @@ class WakeWordDetector private constructor(dir: File) {
             return true
         }
 
-        /** Charge le détecteur, ou null si les modèles manquent ou sont illisibles. */
-        fun load(context: Context): WakeWordDetector? = try {
-            if (modelsPresent(context)) WakeWordDetector(modelDir(context)) else null
-        } catch (e: Throwable) {
-            lastError = "Chargement des modèles : ${e.javaClass.simpleName} ${e.message ?: ""}".trim().take(200)
-            null
+        private const val PREFS = "walldock"
+        private const val KEY_IN_PROGRESS = "wakeword_load_in_progress"
+        private const val KEY_CRASHED = "wakeword_crashed"
+
+        /**
+         * Vrai si un essai précédent a fait planter l'appli (plantage natif impossible à intercepter) :
+         * on n'insiste pas et on reste sur la détection par HA.
+         */
+        fun crashedBefore(context: Context): Boolean {
+            val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            if (sp.getBoolean(KEY_IN_PROGRESS, false)) {
+                sp.edit().putBoolean(KEY_IN_PROGRESS, false).putBoolean(KEY_CRASHED, true).commit()
+            }
+            return sp.getBoolean(KEY_CRASHED, false)
+        }
+
+        /** Nouvel essai demandé (réglage décoché puis recoché). */
+        fun clearCrash(context: Context) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_CRASHED, false).apply()
+        }
+
+        /** Charge le détecteur et le teste sur du silence, ou null si les modèles manquent ou sont illisibles. */
+        fun load(context: Context): WakeWordDetector? {
+            if (!modelsPresent(context)) return null
+            if (crashedBefore(context)) {
+                lastError = "le moteur a planté sur cette tablette"
+                return null
+            }
+            val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            sp.edit().putBoolean(KEY_IN_PROGRESS, true).commit()
+            return try {
+                val detector = WakeWordDetector(modelDir(context))
+                // Essai complet (3 s de silence) avant de l'utiliser pour de vrai
+                val silence = ByteArray(2_048)
+                repeat(24) { detector.process(silence, silence.size) }
+                detector.reset()
+                detector
+            } catch (e: Throwable) {
+                lastError = "Chargement des modèles : ${e.javaClass.simpleName} ${e.message ?: ""}".trim().take(200)
+                null
+            } finally {
+                sp.edit().putBoolean(KEY_IN_PROGRESS, false).commit()
+            }
         }
     }
 }
