@@ -41,7 +41,7 @@ Tablettes Honor/Huawei : désactiver l'optimisation de batterie pour WallDock.
 
 WallDock est gratuit et libre. Si l'appli vous rend service, un petit don aide à la faire avancer :
 
-- Liens de dons (Ko-fi et PayPal) : bientôt disponibles.
+- ☕ **Ko-fi** : https://ko-fi.com/psycho1807
 
 ## Compilation
 
@@ -66,6 +66,6 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest). The app UI is currently in French.
 
-Donation links (Ko-fi, PayPal): coming soon.
+Support the project: [Ko-fi](https://ko-fi.com/psycho1807)
 
 License: GPL-3.0.
