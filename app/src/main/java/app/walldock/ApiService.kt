@@ -10,6 +10,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.speech.tts.TextToSpeech
@@ -99,7 +101,11 @@ class ApiService : Service(), EsphomeServer.Handler {
         .arg("message", UserService.ARG_STRING)
         .arg("secondes", UserService.ARG_INT)
     private val closeAlertService = UserService("fermer_alerte")
-    private val services = listOf(speakService, openPageService, openAppService, showAlertService, closeAlertService)
+    private val playSoundService = UserService("jouer_son").arg("adresse", UserService.ARG_STRING)
+    private val services = listOf(
+        speakService, openPageService, openAppService, showAlertService, closeAlertService, playSoundService
+    )
+    private var player: MediaPlayer? = null
 
     private lateinit var alertOverlay: AlertOverlay
 
@@ -186,6 +192,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.removeCallbacks(updateCheck)
         Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
+        player?.release()
+        player = null
         tts?.shutdown()
         tts = null
         try {
@@ -276,6 +284,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.post {
             when {
                 service === speakService -> speak(args["message"] as? String ?: "")
+                service === playSoundService -> playSound(args["adresse"] as? String ?: "")
                 service === openPageService -> openPage(args["adresse"] as? String ?: "")
                 service === openAppService -> openAppByName(args["nom"] as? String ?: "")
                 service === showAlertService -> showAlert(
@@ -364,6 +373,45 @@ class ApiService : Service(), EsphomeServer.Handler {
         val kiosk = base.query?.split("&")?.any { it == "kiosk" || it.startsWith("kiosk=") } == true
         if (kiosk && !url.contains("kiosk")) url += if (url.contains("?")) "&kiosk" else "?kiosk"
         return url
+    }
+
+    /** Joue un son (mp3, ogg…) : adresse complète ou chemin HA comme /local/sonnette.mp3. */
+    private fun playSound(address: String) {
+        val trimmed = address.trim()
+        if (trimmed.isEmpty()) return
+        val url = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            trimmed
+        } else {
+            Prefs(this).haUrl.substringBefore("://") + "://" +
+                Prefs(this).haUrl.substringAfter("://").substringBefore("/") + "/" + trimmed.trimStart('/')
+        }
+        wakeUp()
+        player?.release()
+        val media = MediaPlayer()
+        player = media
+        try {
+            media.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            media.setDataSource(url)
+            media.setOnPreparedListener { it.start() }
+            media.setOnCompletionListener {
+                it.release()
+                if (player === it) player = null
+            }
+            media.setOnErrorListener { mp, _, _ ->
+                mp.release()
+                if (player === mp) player = null
+                true
+            }
+            media.prepareAsync()
+        } catch (e: Exception) {
+            media.release()
+            player = null
+        }
     }
 
     private fun speak(message: String) {
