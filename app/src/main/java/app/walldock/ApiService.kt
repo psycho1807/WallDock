@@ -11,6 +11,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
+import android.net.Uri
+import android.speech.tts.TextToSpeech
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.BatteryManager
@@ -22,7 +24,9 @@ import android.os.PowerManager
 import android.provider.Settings
 import app.walldock.esphome.Entity
 import app.walldock.esphome.EsphomeServer
+import app.walldock.esphome.UserService
 import java.security.MessageDigest
+import java.util.Locale
 
 /**
  * Fait apparaître la tablette dans Home Assistant comme un appareil ESPHome :
@@ -53,7 +57,22 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val reload = Entity(Entity.Kind.BUTTON, "recharger", "Recharger le tableau de bord")
         .icon("mdi:refresh").category(Entity.CATEGORY_CONFIG)
 
-    private val entities = listOf(battery, charging, screen, brightness, currentApp, backToDashboard, reload)
+    private val openSelect = Entity(Entity.Kind.SELECT, "ouvrir", "Ouvrir").icon("mdi:apps")
+
+    private val entities = listOf(battery, charging, screen, brightness, currentApp, openSelect, backToDashboard, reload)
+
+    // Actions appelables depuis HA : esphome.<appareil>_parler, _ouvrir_page, _ouvrir_appli
+    private val speakService = UserService("parler").arg("message", UserService.ARG_STRING)
+    private val openPageService = UserService("ouvrir_page").arg("adresse", UserService.ARG_STRING)
+    private val openAppService = UserService("ouvrir_appli").arg("nom", UserService.ARG_STRING)
+    private val services = listOf(speakService, openPageService, openAppService)
+
+    /** Choix de la liste « Ouvrir » → nom de paquet (null pour le tableau de bord). */
+    private var openTargets: Map<String, String?> = emptyMap()
+
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+    private val pendingSpeech = mutableListOf<String>()
 
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -85,11 +104,22 @@ class ApiService : Service(), EsphomeServer.Handler {
         info.manufacturer = "WallDock"
         info.projectVersion = BuildConfig.VERSION_NAME
 
-        val srv = EsphomeServer(info, entities, this, EsphomeServer.DEFAULT_PORT)
+        refreshOpenTargets()
+        val srv = EsphomeServer(info, entities, services, this, EsphomeServer.DEFAULT_PORT)
         server = srv
         srv.setState(screen, AppState.screenOn)
         srv.setState(brightness, if (AppState.brightness < 0) 100f else AppState.brightness)
         srv.setState(currentApp, AppState.currentApp)
+        srv.setState(openSelect, DASHBOARD_OPTION)
+
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.FRANCE
+                ttsReady = true
+                pendingSpeech.forEach { speak(it) }
+                pendingSpeech.clear()
+            }
+        }
 
         Thread {
             try {
@@ -112,6 +142,8 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onDestroy() {
         instance = null
+        tts?.shutdown()
+        tts = null
         try {
             unregisterReceiver(batteryReceiver)
         } catch (e: Exception) {
@@ -135,6 +167,23 @@ class ApiService : Service(), EsphomeServer.Handler {
     /** À appeler quand l'appli au premier plan change (tableau de bord ou appli du dock). */
     fun reportCurrentApp() {
         server?.setState(currentApp, AppState.currentApp)
+        if (openTargets.containsKey(AppState.currentApp)) server?.setState(openSelect, AppState.currentApp)
+    }
+
+    /** À appeler quand les applis du dock changent : HA relit la liste « Ouvrir ». */
+    fun onDockChanged() {
+        refreshOpenTargets()
+        server?.reconnectClients()
+    }
+
+    private fun refreshOpenTargets() {
+        val targets = linkedMapOf<String, String?>(DASHBOARD_OPTION to null)
+        for (packageName in Prefs(this).dockApps) {
+            val app = Apps.load(this, packageName) ?: continue
+            targets[app.label] = app.packageName
+        }
+        openTargets = targets
+        openSelect.options = targets.keys.toList()
     }
 
     /** À appeler quand l'écran est rallumé localement (toucher sur l'écran noir). */
@@ -163,10 +212,106 @@ class ApiService : Service(), EsphomeServer.Handler {
     override fun onButton(entity: Entity) {
         main.post {
             when {
-                entity === backToDashboard -> Dashboard.bringToFront(this)
+                entity === backToDashboard -> showDashboard(home = true)
                 entity === reload -> AppState.controller?.reloadDashboard()
             }
         }
+    }
+
+    override fun onSelect(entity: Entity, option: String) {
+        main.post {
+            if (entity !== openSelect || !openTargets.containsKey(option)) return@post
+            val packageName = openTargets[option]
+            if (packageName == null) showDashboard(home = true) else openApp(packageName)
+            server?.setState(openSelect, option)
+        }
+    }
+
+    override fun onService(service: UserService, args: Map<String, Any>) {
+        main.post {
+            when {
+                service === speakService -> speak(args["message"] as? String ?: "")
+                service === openPageService -> openPage(args["adresse"] as? String ?: "")
+                service === openAppService -> openAppByName(args["nom"] as? String ?: "")
+            }
+        }
+    }
+
+    // ----- Actions -----
+
+    /** Ramène le tableau de bord ; [home] = revenir aussi à la page d'accueil configurée. */
+    private fun showDashboard(home: Boolean) {
+        val controller = AppState.controller
+        if (AppState.dashboardVisible && controller != null) {
+            if (home) controller.showHome()
+        } else {
+            if (home) AppState.pendingHome = true
+            Dashboard.bringToFront(this)
+        }
+    }
+
+    private fun openApp(packageName: String) {
+        val controller = AppState.controller
+        if (AppState.dashboardVisible && controller != null) {
+            controller.openApp(packageName)
+        } else {
+            // Android n'autorise le lancement d'une appli que depuis le premier plan :
+            // on ramène d'abord WallDock, qui l'ouvrira à son tour.
+            AppState.pendingApp = packageName
+            Dashboard.bringToFront(this)
+        }
+    }
+
+    private fun openAppByName(name: String) {
+        val wanted = name.trim()
+        if (wanted.isEmpty()) return
+        if (wanted.equals(DASHBOARD_OPTION, ignoreCase = true)) {
+            showDashboard(home = true)
+            return
+        }
+        val apps = Apps.listLaunchable(this)
+        val app = apps.firstOrNull { it.packageName.equals(wanted, ignoreCase = true) }
+            ?: apps.firstOrNull { it.label.equals(wanted, ignoreCase = true) }
+            ?: apps.firstOrNull { it.label.contains(wanted, ignoreCase = true) }
+        if (app != null) openApp(app.packageName)
+    }
+
+    private fun openPage(address: String) {
+        val url = resolvePageUrl(address.trim()) ?: return
+        val controller = AppState.controller
+        if (AppState.dashboardVisible && controller != null) {
+            controller.openUrl(url)
+        } else {
+            AppState.pendingUrl = url
+            Dashboard.bringToFront(this)
+        }
+    }
+
+    /**
+     * « /dashboard-home/plan » → adresse complète sur le même Home Assistant ;
+     * le mode kiosque (?kiosk) est conservé s'il est utilisé dans l'adresse configurée.
+     */
+    private fun resolvePageUrl(address: String): String? {
+        if (address.isEmpty()) return null
+        if (address.startsWith("http://") || address.startsWith("https://")) return address
+        val base = Uri.parse(Prefs(this).haUrl)
+        val scheme = base.scheme ?: return null
+        val authority = base.encodedAuthority ?: return null
+        val path = if (address.startsWith("/")) address else "/$address"
+        var url = "$scheme://$authority$path"
+        val kiosk = base.query?.split("&")?.any { it == "kiosk" || it.startsWith("kiosk=") } == true
+        if (kiosk && !url.contains("kiosk")) url += if (url.contains("?")) "&kiosk" else "?kiosk"
+        return url
+    }
+
+    private fun speak(message: String) {
+        if (message.isBlank()) return
+        val engine = tts
+        if (engine == null || !ttsReady) {
+            pendingSpeech.add(message)
+            return
+        }
+        engine.speak(message, TextToSpeech.QUEUE_ADD, null, "walldock-${System.currentTimeMillis()}")
     }
 
     private fun setScreen(on: Boolean) {
@@ -256,6 +401,7 @@ class ApiService : Service(), EsphomeServer.Handler {
     }
 
     companion object {
+        const val DASHBOARD_OPTION = "Tableau de bord"
         private const val CHANNEL_ID = "walldock_api"
         private const val NOTIFICATION_ID = 2
 

@@ -173,6 +173,7 @@ class MainActivity : Activity(), DashboardController {
         rebuildDock()
         applyHandlePosition()
         overlayWarning.visibility = if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
+        handlePendingRequests()
     }
 
     private fun applyHandlePosition() {
@@ -230,6 +231,36 @@ class MainActivity : Activity(), DashboardController {
 
     override fun reloadDashboard() {
         web.reload()
+    }
+
+    override fun showHome() {
+        if (prefs.haUrl.isNotBlank() && web.url != prefs.haUrl) web.loadUrl(prefs.haUrl)
+    }
+
+    override fun openApp(packageName: String) {
+        launchApp(packageName)
+    }
+
+    override fun openUrl(url: String) {
+        setDockVisible(false)
+        web.loadUrl(url)
+    }
+
+    /** Traite les demandes de Home Assistant reçues pendant qu'une autre appli était ouverte. */
+    private fun handlePendingRequests() {
+        if (AppState.pendingHome) {
+            AppState.pendingHome = false
+            showHome()
+        }
+        AppState.pendingUrl?.let {
+            AppState.pendingUrl = null
+            openUrl(it)
+        }
+        AppState.pendingApp?.let {
+            AppState.pendingApp = null
+            // Laisser l'écran se poser avant de lancer l'appli
+            handler.postDelayed({ launchApp(it) }, 300)
+        }
     }
 
     override fun onDestroy() {

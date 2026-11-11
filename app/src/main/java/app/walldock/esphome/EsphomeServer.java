@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -28,6 +29,9 @@ public final class EsphomeServer {
         void onSwitch(Entity entity, boolean state);
         void onNumber(Entity entity, float value);
         void onButton(Entity entity);
+        void onSelect(Entity entity, String option);
+        /** Action appelée depuis HA ; [args] associe le nom de chaque paramètre à sa valeur. */
+        void onService(UserService service, Map<String, Object> args);
     }
 
     /** Fiche de l'appareil telle que Home Assistant l'affiche. */
@@ -71,12 +75,18 @@ public final class EsphomeServer {
     private static final int NUMBER_COMMAND = 51;
     private static final int LIST_BUTTON = 61;
     private static final int BUTTON_COMMAND = 62;
+    private static final int LIST_SERVICES = 41;
+    private static final int EXECUTE_SERVICE = 42;
+    private static final int LIST_SELECT = 52;
+    private static final int SELECT_STATE = 53;
+    private static final int SELECT_COMMAND = 54;
 
     private static final int API_VERSION_MAJOR = 1;
     private static final int API_VERSION_MINOR = 10;
 
     private final DeviceInfo info;
     private final List<Entity> entities;
+    private final List<UserService> services;
     private final Handler handler;
     private final int port;
     private final List<Client> clients = new CopyOnWriteArrayList<>();
@@ -89,9 +99,10 @@ public final class EsphomeServer {
     private volatile ServerSocket serverSocket;
     private volatile boolean running;
 
-    public EsphomeServer(DeviceInfo info, List<Entity> entities, Handler handler, int port) {
+    public EsphomeServer(DeviceInfo info, List<Entity> entities, List<UserService> services, Handler handler, int port) {
         this.info = info;
         this.entities = entities;
+        this.services = services;
         this.handler = handler;
         this.port = port;
     }
@@ -120,6 +131,16 @@ public final class EsphomeServer {
 
     public int clientCount() {
         return clients.size();
+    }
+
+    /**
+     * Ferme les connexions : Home Assistant se reconnecte aussitôt et relit la liste
+     * des entités (utile quand les choix d'une liste ont changé).
+     */
+    public void reconnectClients() {
+        sender.execute(() -> {
+            for (Client client : clients) client.close();
+        });
     }
 
     /**
@@ -210,8 +231,45 @@ public final class EsphomeServer {
                     return true;
                 case LIST_ENTITIES_REQUEST:
                     for (Entity entity : entities) send(listType(entity), describe(entity));
+                    for (UserService service : services) send(LIST_SERVICES, describe(service));
                     send(LIST_ENTITIES_DONE, new byte[0]);
                     return true;
+                case SELECT_COMMAND: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    Entity entity = find(Proto.getInt(f, 1), Entity.Kind.SELECT);
+                    if (entity != null && handler != null) handler.onSelect(entity, Proto.getString(f, 2));
+                    return true;
+                }
+                case EXECUTE_SERVICE: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    int key = Proto.getInt(f, 1);
+                    UserService service = null;
+                    for (UserService s : services) if (s.key == key) service = s;
+                    if (service == null || handler == null) return true;
+                    List<byte[]> rawArgs = Proto.readRepeated(payload, 2);
+                    Map<String, Object> args = new HashMap<>();
+                    for (int i = 0; i < service.argNames.size() && i < rawArgs.size(); i++) {
+                        Map<Integer, Object> a = Proto.read(rawArgs.get(i));
+                        switch (service.argTypes.get(i)) {
+                            case UserService.ARG_BOOL:
+                                args.put(service.argNames.get(i), Proto.getBool(a, 1));
+                                break;
+                            case UserService.ARG_INT: {
+                                long zigzag = a.containsKey(5) ? (Long) a.get(5) : 0L;
+                                int value = a.containsKey(5) ? (int) ((zigzag >>> 1) ^ -(zigzag & 1)) : Proto.getInt(a, 2);
+                                args.put(service.argNames.get(i), value);
+                                break;
+                            }
+                            case UserService.ARG_FLOAT:
+                                args.put(service.argNames.get(i), Proto.getFloat(a, 3));
+                                break;
+                            default:
+                                args.put(service.argNames.get(i), Proto.getString(a, 4));
+                        }
+                    }
+                    handler.onService(service, args);
+                    return true;
+                }
                 case SUBSCRIBE_STATES_REQUEST:
                     subscribed = true;
                     for (Entity entity : entities) sendState(entity);
@@ -295,6 +353,12 @@ public final class EsphomeServer {
                         send(TEXT_SENSOR_STATE, w.bytes());
                         break;
                     }
+                    case SELECT: {
+                        Proto.Writer w = new Proto.Writer().fixed32(1, entity.key);
+                        if (state instanceof String) w.string(2, (String) state); else w.bool(3, true);
+                        send(SELECT_STATE, w.bytes());
+                        break;
+                    }
                     case BUTTON:
                         break; // un bouton n'a pas d'état
                 }
@@ -310,8 +374,21 @@ public final class EsphomeServer {
                 case SWITCH: return LIST_SWITCH;
                 case NUMBER: return LIST_NUMBER;
                 case BUTTON: return LIST_BUTTON;
+                case SELECT: return LIST_SELECT;
                 default: return LIST_TEXT_SENSOR;
             }
+        }
+
+        private byte[] describe(UserService service) {
+            Proto.Writer w = new Proto.Writer().string(1, service.name).fixed32(2, service.key);
+            for (int i = 0; i < service.argNames.size(); i++) {
+                byte[] arg = new Proto.Writer()
+                    .string(1, service.argNames.get(i))
+                    .varint(2, service.argTypes.get(i))
+                    .bytes();
+                w.message(3, arg);
+            }
+            return w.bytes();
         }
 
         private byte[] describe(Entity e) {
@@ -330,6 +407,11 @@ public final class EsphomeServer {
                         .string(13, e.deviceClass).bytes();
                 case BUTTON:
                     return w.string(5, e.icon).varint(7, e.entityCategory).string(8, e.deviceClass).bytes();
+                case SELECT: {
+                    w.string(5, e.icon);
+                    for (String option : e.options) w.stringAlways(6, option);
+                    return w.varint(8, e.entityCategory).bytes();
+                }
                 default: // TEXT_SENSOR
                     return w.string(5, e.icon).varint(7, e.entityCategory).string(8, e.deviceClass).bytes();
             }

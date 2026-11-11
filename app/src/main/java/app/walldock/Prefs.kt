@@ -88,9 +88,23 @@ object AppState {
     /** Écran principal, quand il existe : appliquer l'écran et la luminosité, recharger la page. */
     @Volatile
     var controller: DashboardController? = null
+
+    // Demandes de HA en attente, traitées dès que le tableau de bord revient au premier plan
+    @Volatile
+    var pendingHome = false
+
+    @Volatile
+    var pendingApp: String? = null
+
+    @Volatile
+    var pendingUrl: String? = null
 }
 
 interface DashboardController {
     fun applyScreen()
     fun reloadDashboard()
+    /** Revenir à la page d'accueil configurée. */
+    fun showHome()
+    fun openApp(packageName: String)
+    fun openUrl(url: String)
 }

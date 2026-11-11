@@ -1,11 +1,16 @@
 package app.walldock.esphome;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Une entité exposée à Home Assistant (capteur, interrupteur, bouton…). */
 public final class Entity {
 
-    public enum Kind { SENSOR, BINARY_SENSOR, SWITCH, NUMBER, BUTTON, TEXT_SENSOR }
+    public enum Kind { SENSOR, BINARY_SENSOR, SWITCH, NUMBER, BUTTON, TEXT_SENSOR, SELECT }
+
+    /** Choix proposés (entités SELECT). Home Assistant les relit à chaque reconnexion. */
+    public volatile List<String> options = new ArrayList<>();
 
     /** Catégories d'entité ESPHome. */
     public static final int CATEGORY_NONE = 0;

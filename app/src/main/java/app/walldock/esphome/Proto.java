@@ -2,7 +2,9 @@ package app.walldock.esphome;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Encodage / décodage Protocol Buffers minimal, suffisant pour l'API native ESPHome. */
@@ -51,6 +53,19 @@ final class Proto {
             writeVarint(out, bytes.length);
             out.write(bytes, 0, bytes.length);
             return this;
+        }
+
+        /** Champ « message imbriqué » ou chaîne déjà encodée (toujours écrit, même vide). */
+        Writer message(int field, byte[] value) {
+            tag(field, WIRE_LEN);
+            writeVarint(out, value.length);
+            out.write(value, 0, value.length);
+            return this;
+        }
+
+        /** Chaîne écrite même si elle est vide (éléments de listes répétées). */
+        Writer stringAlways(int field, String value) {
+            return message(field, value.getBytes(StandardCharsets.UTF_8));
         }
 
         byte[] bytes() {
@@ -116,6 +131,40 @@ final class Proto {
             }
         }
         return fields;
+    }
+
+    /** Toutes les occurrences d'un champ répété de type « len » (messages imbriqués, chaînes). */
+    static List<byte[]> readRepeated(byte[] data, int wantedField) {
+        List<byte[]> values = new ArrayList<>();
+        int[] pos = {0};
+        while (pos[0] < data.length) {
+            long tag = readVarint(data, pos);
+            int field = (int) (tag >>> 3);
+            int wire = (int) (tag & 7);
+            if (wire == WIRE_VARINT) {
+                readVarint(data, pos);
+            } else if (wire == WIRE_FIXED64) {
+                pos[0] += 8;
+            } else if (wire == WIRE_FIXED32) {
+                pos[0] += 4;
+            } else if (wire == WIRE_LEN) {
+                int len = (int) readVarint(data, pos);
+                if (field == wantedField) {
+                    byte[] value = new byte[len];
+                    System.arraycopy(data, pos[0], value, 0, len);
+                    values.add(value);
+                }
+                pos[0] += len;
+            } else {
+                break;
+            }
+        }
+        return values;
+    }
+
+    static String getString(Map<Integer, Object> fields, int field) {
+        Object v = fields.get(field);
+        return v instanceof byte[] ? new String((byte[]) v, StandardCharsets.UTF_8) : "";
     }
 
     static long readVarint(byte[] data, int[] pos) {
