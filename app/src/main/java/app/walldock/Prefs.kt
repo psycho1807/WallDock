@@ -37,6 +37,16 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_HANDLE, HANDLE_BOTTOM_RIGHT) ?: HANDLE_BOTTOM_RIGHT
         set(value) = sp.edit().putString(KEY_HANDLE, value).apply()
 
+    /** Écran de veille (horloge) sur le tableau de bord après une période sans toucher l'écran. */
+    var screensaverEnabled: Boolean
+        get() = sp.getBoolean(KEY_SAVER, false)
+        set(value) = sp.edit().putBoolean(KEY_SAVER, value).apply()
+
+    /** Délai avant l'écran de veille, en minutes. */
+    var screensaverMinutes: Int
+        get() = sp.getInt(KEY_SAVER_MINUTES, 5)
+        set(value) = sp.edit().putInt(KEY_SAVER_MINUTES, value).apply()
+
     val isConfigured: Boolean
         get() = haUrl.isNotBlank() && pin.isNotBlank()
 
@@ -47,6 +57,8 @@ class Prefs(context: Context) {
         const val HANDLE_HIDDEN = "hidden"
 
         private const val KEY_HANDLE = "handle_position"
+        private const val KEY_SAVER = "screensaver_enabled"
+        private const val KEY_SAVER_MINUTES = "screensaver_minutes"
         private const val KEY_URL = "ha_url"
         private const val KEY_PIN = "pin"
         private const val KEY_DELAY = "return_seconds"

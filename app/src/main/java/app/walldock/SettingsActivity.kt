@@ -33,6 +33,8 @@ class SettingsActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var handleGroup: RadioGroup
     private lateinit var haStatusText: TextView
+    private lateinit var saverCheck: CheckBox
+    private lateinit var saverField: EditText
 
     private val dockSelection = mutableListOf<String>()
     private val videoSelection = mutableSetOf<String>()
@@ -60,6 +62,16 @@ class SettingsActivity : Activity() {
         column.addView(label("Retour au tableau de bord après (secondes d’inactivité)"))
         delayField = field(prefs.returnSeconds.toString(), "120", InputType.TYPE_CLASS_NUMBER)
         column.addView(delayField)
+
+        column.addView(label("Écran de veille"))
+        saverCheck = CheckBox(this)
+        saverCheck.text = "Afficher une horloge sur fond noir après une période sans toucher l’écran"
+        saverCheck.setTextColor(Color.WHITE)
+        saverCheck.isChecked = prefs.screensaverEnabled
+        column.addView(saverCheck)
+        column.addView(label("Délai avant l’écran de veille (minutes)"))
+        saverField = field(prefs.screensaverMinutes.toString(), "5", InputType.TYPE_CLASS_NUMBER)
+        column.addView(saverField)
 
         column.addView(label("Poignée du dock"))
         handleGroup = RadioGroup(this)
@@ -139,7 +151,9 @@ class SettingsActivity : Activity() {
         val url = urlField.text.toString().trim().trimEnd('/')
         val pin = pinField.text.toString().trim()
         val delay = delayField.text.toString().trim().toIntOrNull() ?: 0
+        val saverMinutes = saverField.text.toString().trim().toIntOrNull() ?: 0
         when {
+            saverCheck.isChecked && saverMinutes < 1 -> toast("Le délai de l’écran de veille doit être d’au moins 1 minute")
             !(url.startsWith("http://") || url.startsWith("https://")) ->
                 toast("L’adresse doit commencer par http:// ou https://")
             pin.length < 4 -> toast("Le code doit faire au moins 4 chiffres")
@@ -148,6 +162,8 @@ class SettingsActivity : Activity() {
                 prefs.haUrl = url
                 prefs.pin = pin
                 prefs.returnSeconds = delay
+                prefs.screensaverEnabled = saverCheck.isChecked
+                if (saverMinutes >= 1) prefs.screensaverMinutes = saverMinutes
                 prefs.dockApps = dockSelection.toList()
                 prefs.videoApps = videoSelection.toSet()
                 val checked = handleGroup.findViewById<RadioButton>(handleGroup.checkedRadioButtonId)

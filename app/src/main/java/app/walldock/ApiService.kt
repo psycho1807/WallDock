@@ -58,14 +58,25 @@ class ApiService : Service(), EsphomeServer.Handler {
         .icon("mdi:refresh").category(Entity.CATEGORY_CONFIG)
 
     private val openSelect = Entity(Entity.Kind.SELECT, "ouvrir", "Ouvrir").icon("mdi:apps")
+    private val alertShown = Entity(Entity.Kind.BINARY_SENSOR, "alerte_affichee", "Alerte affichée")
+        .icon("mdi:alert-octagon")
 
-    private val entities = listOf(battery, charging, screen, brightness, currentApp, openSelect, backToDashboard, reload)
+    private val entities = listOf(
+        battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload
+    )
 
     // Actions appelables depuis HA : esphome.<appareil>_parler, _ouvrir_page, _ouvrir_appli
     private val speakService = UserService("parler").arg("message", UserService.ARG_STRING)
     private val openPageService = UserService("ouvrir_page").arg("adresse", UserService.ARG_STRING)
     private val openAppService = UserService("ouvrir_appli").arg("nom", UserService.ARG_STRING)
-    private val services = listOf(speakService, openPageService, openAppService)
+    private val showAlertService = UserService("afficher_alerte")
+        .arg("titre", UserService.ARG_STRING)
+        .arg("message", UserService.ARG_STRING)
+        .arg("secondes", UserService.ARG_INT)
+    private val closeAlertService = UserService("fermer_alerte")
+    private val services = listOf(speakService, openPageService, openAppService, showAlertService, closeAlertService)
+
+    private lateinit var alertOverlay: AlertOverlay
 
     /** Choix de la liste « Ouvrir » → nom de paquet (null pour le tableau de bord). */
     private var openTargets: Map<String, String?> = emptyMap()
@@ -111,6 +122,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(brightness, if (AppState.brightness < 0) 100f else AppState.brightness)
         srv.setState(currentApp, AppState.currentApp)
         srv.setState(openSelect, DASHBOARD_OPTION)
+        srv.setState(alertShown, false)
+        alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
 
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -142,6 +155,7 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onDestroy() {
         instance = null
+        alertOverlay.close(notify = false)
         tts?.shutdown()
         tts = null
         try {
@@ -233,8 +247,25 @@ class ApiService : Service(), EsphomeServer.Handler {
                 service === speakService -> speak(args["message"] as? String ?: "")
                 service === openPageService -> openPage(args["adresse"] as? String ?: "")
                 service === openAppService -> openAppByName(args["nom"] as? String ?: "")
+                service === showAlertService -> showAlert(
+                    args["titre"] as? String ?: "",
+                    args["message"] as? String ?: "",
+                    args["secondes"] as? Int ?: 0
+                )
+                service === closeAlertService -> {
+                    alertOverlay.close(notify = false)
+                    server?.setState(alertShown, false)
+                }
             }
         }
+    }
+
+    private fun showAlert(title: String, message: String, seconds: Int) {
+        if (!AppState.screenOn) setScreen(true) else wakeUp()
+        val shown = alertOverlay.show(title.ifBlank { "Alerte" }, message, seconds)
+        server?.setState(alertShown, shown)
+        // Sans l'autorisation « affichage par-dessus », on se rabat sur la voix
+        if (!shown) speak(listOf(title, message).filter { it.isNotBlank() }.joinToString(". "))
     }
 
     // ----- Actions -----

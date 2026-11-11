@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
@@ -27,6 +28,7 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextClock
 import android.widget.TextView
 
 /**
@@ -43,6 +45,16 @@ class MainActivity : Activity(), DashboardController {
     private lateinit var edgeStrip: View
     private lateinit var overlayWarning: TextView
     private lateinit var blackCover: View
+    private lateinit var screensaver: FrameLayout
+    private lateinit var screensaverContent: View
+    private var lastTouch = 0L
+    private var swallowGesture = false
+    private val screensaverCheck = object : Runnable {
+        override fun run() {
+            checkScreensaver()
+            handler.postDelayed(this, 15_000)
+        }
+    }
 
     private var loadedUrl = ""
     private val handler = Handler(Looper.getMainLooper())
@@ -146,6 +158,30 @@ class MainActivity : Activity(), DashboardController {
         }
         root.addView(blackCover, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
+        // Écran de veille : horloge et date sur fond noir
+        screensaver = FrameLayout(this)
+        screensaver.setBackgroundColor(Color.BLACK)
+        screensaver.visibility = View.GONE
+        val clockColumn = LinearLayout(this)
+        clockColumn.orientation = LinearLayout.VERTICAL
+        clockColumn.gravity = Gravity.CENTER_HORIZONTAL
+        val clock = TextClock(this)
+        clock.format24Hour = "HH:mm"
+        clock.format12Hour = "HH:mm"
+        clock.textSize = 120f
+        clock.setTextColor(0xFFDBE9FF.toInt())
+        clock.setShadowLayer(dp(18).toFloat(), 0f, 0f, 0x993FD4FF.toInt())
+        clockColumn.addView(clock)
+        val date = TextClock(this)
+        date.format24Hour = "EEEE d MMMM"
+        date.format12Hour = "EEEE d MMMM"
+        date.textSize = 24f
+        date.setTextColor(0xFF7F9BC4.toInt())
+        clockColumn.addView(date)
+        screensaverContent = clockColumn
+        screensaver.addView(clockColumn, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.CENTER))
+        root.addView(screensaver, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
         setContentView(root)
         ApiService.start(this)
     }
@@ -174,6 +210,43 @@ class MainActivity : Activity(), DashboardController {
         applyHandlePosition()
         overlayWarning.visibility = if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
         handlePendingRequests()
+        lastTouch = SystemClock.elapsedRealtime()
+        handler.removeCallbacks(screensaverCheck)
+        handler.postDelayed(screensaverCheck, 15_000)
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        lastTouch = SystemClock.elapsedRealtime()
+        if (screensaver.visibility == View.VISIBLE) {
+            // Un toucher réveille l'écran de veille sans cliquer sur le tableau de bord en dessous
+            screensaver.visibility = View.GONE
+            swallowGesture = true
+        }
+        if (swallowGesture) {
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                swallowGesture = false
+            }
+            return true
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    private fun checkScreensaver() {
+        if (!prefs.screensaverEnabled || !AppState.dashboardVisible || !AppState.screenOn) {
+            screensaver.visibility = View.GONE
+            return
+        }
+        val idleMs = SystemClock.elapsedRealtime() - lastTouch
+        if (idleMs >= prefs.screensaverMinutes * 60_000L) {
+            if (screensaver.visibility != View.VISIBLE) {
+                setDockVisible(false)
+                screensaver.visibility = View.VISIBLE
+            }
+            // Déplacer légèrement l'horloge pour ne pas marquer l'écran
+            val range = dp(60)
+            screensaverContent.translationX = (Math.random() * 2 * range - range).toFloat()
+            screensaverContent.translationY = (Math.random() * 2 * range - range).toFloat()
+        }
     }
 
     private fun applyHandlePosition() {
@@ -203,6 +276,8 @@ class MainActivity : Activity(), DashboardController {
     }
 
     override fun onPause() {
+        handler.removeCallbacks(screensaverCheck)
+        screensaver.visibility = View.GONE
         AppState.dashboardVisible = false
         setDockVisible(false)
         web.onPause()
