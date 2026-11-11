@@ -184,6 +184,27 @@ class WakeWordDetector private constructor(dir: File) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_CRASHED, false).apply()
         }
 
+        // Le modèle mel v0.5.1 déclare une entrée par défaut [1, 1] : TFLite Android alloue les tenseurs
+        // dès la création et échoue (« BytesRequired number of elements overflowed »).
+        // On fixe la taille par défaut à [1, 1760] directement dans le fichier (même calcul ensuite).
+        private const val MEL_FILE_SIZE = 1_092_516L
+        private const val MEL_SHAPE_OFFSET = 1_092_456L
+
+        private fun fixMelInputShape(file: File) {
+            if (file.length() != MEL_FILE_SIZE) return
+            java.io.RandomAccessFile(file, "rw").use { raf ->
+                val shape = ByteArray(8)
+                raf.seek(MEL_SHAPE_OFFSET)
+                raf.readFully(shape)
+                val first = java.nio.ByteBuffer.wrap(shape).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
+                val second = java.nio.ByteBuffer.wrap(shape, 4, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
+                if (first == 1 && second == 1) {
+                    raf.seek(MEL_SHAPE_OFFSET + 4)
+                    raf.write(java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(WINDOW_SAMPLES).array())
+                }
+            }
+        }
+
         /** Charge le détecteur et le teste sur du silence, ou null si les modèles manquent ou sont illisibles. */
         fun load(context: Context): WakeWordDetector? {
             if (!modelsPresent(context)) return null
@@ -194,6 +215,7 @@ class WakeWordDetector private constructor(dir: File) {
             val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             sp.edit().putBoolean(KEY_IN_PROGRESS, true).commit()
             return try {
+                fixMelInputShape(File(modelDir(context), MEL_MODEL))
                 val detector = WakeWordDetector(modelDir(context))
                 // Essai complet (3 s de silence) avant de l'utiliser pour de vrai
                 val silence = ByteArray(2_048)

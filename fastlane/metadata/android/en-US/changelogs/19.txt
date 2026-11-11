@@ -1,0 +1,4 @@
+- Voice timers with countdown and alarm
+- On-device "Hey Jarvis" wake word
+- Volume control from Home Assistant
+- Automatic fallback to Home Assistant wake word detection

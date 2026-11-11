@@ -1,0 +1,4 @@
+- Minuteurs vocaux avec compte à rebours et sonnerie
+- « Hey Jarvis » reconnu directement sur la tablette
+- Volume réglable depuis Home Assistant
+- Repli automatique sur la détection par Home Assistant si le moteur local échoue
