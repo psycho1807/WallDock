@@ -32,6 +32,31 @@ class Jarvis(
     private val main = Handler(Looper.getMainLooper())
     private val overlay = JarvisOverlay(context) { main.post { cancel() } }
 
+    /** Minuteurs vocaux (bandeau + sonnerie). */
+    val timers = TimerOverlay(context) { wakeUp() }
+
+    /** Détecteur « Hey Jarvis » sur la tablette (null = détection par HA). */
+    @Volatile
+    private var detector: WakeWordDetector? = null
+    @Volatile
+    private var resetDetector = false
+    @Volatile
+    private var lastDetection = 0L
+    @Volatile
+    private var loadingDetector = false
+
+    /** Meilleur score « Hey Jarvis » depuis la dernière lecture (diagnostic). */
+    @Volatile
+    var wakeScorePeak = 0f
+
+    /** Réglage « détection sur la tablette », relu à chaque mise en veille. */
+    @Volatile
+    private var onDeviceEnabled = Prefs(context).jarvisOnDevice
+
+    /** Vrai quand « Hey Jarvis » est reconnu par la tablette. */
+    val detectsOnDevice: Boolean
+        get() = onDeviceEnabled && detector != null
+
     @Volatile
     var state = State.OFF
         private set
@@ -92,6 +117,7 @@ class Jarvis(
             context.toast("Autorise le micro dans les réglages de WallDock")
             return@post
         }
+        timers.stopRinging()
         stopPlayback()
         stopThen { startConversationTurn(conversationId) }
     }
@@ -112,6 +138,7 @@ class Jarvis(
 
     fun release() {
         main.removeCallbacksAndMessages(null)
+        timers.release()
         afterStop = null
         runActive = false
         streaming = false
@@ -119,6 +146,8 @@ class Jarvis(
         stopPlayback()
         overlay.hide()
         setState(State.OFF)
+        detector?.close()
+        detector = null
     }
 
     // ---- Événements de Home Assistant (fil réseau → fil principal) ----
@@ -150,6 +179,10 @@ class Jarvis(
             if (state != State.WAITING) overlay.showError("Jarvis est indisponible")
             scheduleRestartAfterError()
         }
+    }
+
+    override fun onTimerEvent(eventType: Int, timerId: String, name: String, totalSeconds: Int, secondsLeft: Int, active: Boolean) {
+        main.post { timers.onEvent(eventType, timerId, name, totalSeconds, secondsLeft, active) }
     }
 
     override fun onVoiceStopRequested() {
@@ -324,17 +357,53 @@ class Jarvis(
             setState(State.OFF)
             return
         }
+        onDeviceEnabled = Prefs(context).jarvisOnDevice
+        prepareDetector()
         setState(State.WAITING)
-        startRun("", EsphomeServer.VOICE_FLAG_USE_WAKE_WORD or EsphomeServer.VOICE_FLAG_USE_VAD)
+        if (detectsOnDevice) {
+            // « Hey Jarvis » écouté par la tablette : rien n'est envoyé à HA tant qu'il n'est pas dit
+            streaming = false
+            resetDetector = true
+        } else {
+            startRun("", EsphomeServer.VOICE_FLAG_USE_WAKE_WORD or EsphomeServer.VOICE_FLAG_USE_VAD)
+        }
     }
 
-    private fun startRun(conversation: String, flags: Int) {
+    /** Charge (et télécharge la première fois) les modèles « Hey Jarvis » en arrière-plan. */
+    private fun prepareDetector() {
+        if (!onDeviceEnabled || detector != null || loadingDetector) return
+        loadingDetector = true
+        Thread({
+            val ok = WakeWordDetector.modelsPresent(context) || WakeWordDetector.downloadModels(context)
+            val loaded = if (ok) WakeWordDetector.load(context) else null
+            main.post {
+                loadingDetector = false
+                if (loaded != null) {
+                    detector = loaded
+                    // Bascule vers la détection locale si on attendait « Hey Jarvis » via HA
+                    if (state == State.WAITING) stopThen { restartWaiting() }
+                }
+            }
+        }, "jarvis-models").start()
+    }
+
+    /** « Hey Jarvis » reconnu par la tablette (fil principal). */
+    private fun onLocalWakeWord() {
+        if (state != State.WAITING || !server.isVoiceSubscribed) return
+        wakeUp()
+        beep()
+        setState(State.LISTENING)
+        overlay.show(JarvisOverlay.Mode.LISTENING)
+        startRun("", EsphomeServer.VOICE_FLAG_USE_VAD, "Hey Jarvis")
+    }
+
+    private fun startRun(conversation: String, flags: Int, wakeWordPhrase: String = "") {
         runActive = true
         runEnded = false
         speechPending = false
         continueConversation = false
         streaming = true
-        server.voiceStart(conversation, flags, "")
+        server.voiceStart(conversation, flags, wakeWordPhrase)
     }
 
     private fun scheduleRestartAfterError() {
@@ -398,6 +467,24 @@ class Jarvis(
             micLevel = level
             if (overlay.isShowing) overlay.level = level
             if (streaming) chunksSent++
+            val wake = detector
+            if (wake != null && state == State.WAITING && !streaming && onDeviceEnabled) {
+                if (resetDetector) {
+                    resetDetector = false
+                    wake.reset()
+                }
+                val score = try {
+                    wake.process(buffer, n)
+                } catch (e: Exception) {
+                    -1f
+                }
+                if (score > wakeScorePeak) wakeScorePeak = score
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (score >= WAKE_THRESHOLD && now - lastDetection > 2_000) {
+                    lastDetection = now
+                    main.post { onLocalWakeWord() }
+                }
+            }
             if (streaming) server.voiceAudio(buffer, n)
         }
     }
@@ -450,7 +537,7 @@ class Jarvis(
         try {
             media.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
@@ -494,10 +581,13 @@ class Jarvis(
         private const val SAMPLE_RATE = 16_000
         /** 1 024 échantillons = 64 ms de son par envoi. */
         private const val CHUNK_BYTES = 2_048
+        /** Seuil de détection de « Hey Jarvis » (comme l'appli openWakeWord de HA). */
+        private const val WAKE_THRESHOLD = 0.5f
 
         const val FEATURES = EsphomeServer.VOICE_FEATURE_VOICE_ASSISTANT or
             EsphomeServer.VOICE_FEATURE_API_AUDIO or
             EsphomeServer.VOICE_FEATURE_ANNOUNCE or
-            EsphomeServer.VOICE_FEATURE_START_CONVERSATION
+            EsphomeServer.VOICE_FEATURE_START_CONVERSATION or
+            EsphomeServer.VOICE_FEATURE_TIMERS
     }
 }

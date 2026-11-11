@@ -76,8 +76,15 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val audioSent = Entity(Entity.Kind.SENSOR, "son_envoye", "Son envoyé à HA")
         .unit("s").icon("mdi:upload-network").category(Entity.CATEGORY_DIAGNOSTIC)
 
+    private val volume = Entity(Entity.Kind.NUMBER, "volume", "Volume")
+        .unit("%").range(0f, 100f, 1f).icon("mdi:volume-high")
+    private val stopRinging = Entity(Entity.Kind.BUTTON, "arreter_la_sonnerie", "Arrêter la sonnerie")
+        .icon("mdi:alarm-off")
+    private val wakeScore = Entity(Entity.Kind.SENSOR, "score_hey_jarvis", "Score Hey Jarvis")
+        .unit("%").measurement().icon("mdi:waveform").category(Entity.CATEGORY_DIAGNOSTIC)
+
     private val entities = listOf(
-        jarvisState, talkToJarvis, micLevel, audioSent,
+        jarvisState, talkToJarvis, volume, stopRinging, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate
     )
@@ -92,7 +99,11 @@ class ApiService : Service(), EsphomeServer.Handler {
                 peakLevel = maxOf(peakLevel * 0.5f, level)
                 server?.setState(micLevel, (peakLevel * 100f).toInt().toFloat())
                 server?.setState(audioSent, (assistant.chunksSent * 64 / 1000).toFloat())
+                val score = if (assistant.detectsOnDevice) assistant.wakeScorePeak else 0f
+                assistant.wakeScorePeak = 0f
+                server?.setState(wakeScore, (score * 100f).toInt().toFloat())
             }
+            reportVolume()
             main.postDelayed(this, 5_000)
         }
     }
@@ -289,12 +300,34 @@ class ApiService : Service(), EsphomeServer.Handler {
         }
     }
 
+    /** Volume des sons (Jarvis, annonces, sonnette) = volume « médias » de la tablette, en %. */
+    private fun reportVolume() {
+        val audio = getSystemService(android.media.AudioManager::class.java) ?: return
+        val max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val current = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+        server?.setState(volume, (current * 100f / max).toInt().toFloat())
+    }
+
+    private fun setVolume(percent: Float) {
+        val audio = getSystemService(android.media.AudioManager::class.java) ?: return
+        val max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        val index = Math.round(percent.coerceIn(0f, 100f) / 100f * max)
+        try {
+            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, index, 0)
+        } catch (e: Exception) {
+            // mode Ne pas déranger : changement refusé
+        }
+        reportVolume()
+    }
+
     override fun onNumber(entity: Entity, value: Float) {
         main.post {
             if (entity === brightness) {
                 AppState.brightness = value.coerceIn(1f, 100f)
                 AppState.controller?.applyScreen()
                 server?.setState(brightness, AppState.brightness)
+            } else if (entity === volume) {
+                setVolume(value)
             }
         }
     }
@@ -306,6 +339,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 entity === reload -> AppState.controller?.reloadDashboard()
                 entity === installUpdate -> Updater.check(this, install = true)
                 entity === talkToJarvis -> jarvis?.talk()
+                entity === stopRinging -> jarvis?.timers?.stopRinging()
             }
         }
     }

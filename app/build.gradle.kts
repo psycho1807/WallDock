@@ -11,8 +11,8 @@ android {
         applicationId = "app.walldock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.6.3"
+        versionCode = 16
+        versionName = "0.7.0"
     }
 
     buildFeatures {
@@ -49,4 +49,9 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+dependencies {
+    // Détection de « Hey Jarvis » sur la tablette (modèles openWakeWord au format TFLite)
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
 }

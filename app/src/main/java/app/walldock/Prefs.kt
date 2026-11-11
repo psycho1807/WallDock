@@ -57,6 +57,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_JARVIS_WAKE, true)
         set(value) = sp.edit().putBoolean(KEY_JARVIS_WAKE, value).apply()
 
+    /** « Hey Jarvis » reconnu par la tablette elle-même (sinon par openWakeWord dans HA). */
+    var jarvisOnDevice: Boolean
+        get() = sp.getBoolean(KEY_JARVIS_ON_DEVICE, true)
+        set(value) = sp.edit().putBoolean(KEY_JARVIS_ON_DEVICE, value).apply()
+
     /** Adresse complète d'un son ou d'une page : les chemins (/local/…) sont rattachés à HA. */
     fun absoluteUrl(address: String): String {
         val trimmed = address.trim()
@@ -76,6 +81,7 @@ class Prefs(context: Context) {
         const val HANDLE_HIDDEN = "hidden"
 
         private const val KEY_JARVIS_WAKE = "jarvis_wake_word"
+        private const val KEY_JARVIS_ON_DEVICE = "jarvis_on_device"
         private const val KEY_AUTO_UPDATE = "auto_update"
         private const val KEY_HANDLE = "handle_position"
         private const val KEY_SAVER = "screensaver_enabled"

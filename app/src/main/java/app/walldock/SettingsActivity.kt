@@ -37,6 +37,7 @@ class SettingsActivity : Activity() {
     private lateinit var saverField: EditText
     private lateinit var updateCheck: CheckBox
     private lateinit var jarvisCheck: CheckBox
+    private lateinit var onDeviceCheck: CheckBox
     private lateinit var jarvisText: TextView
     private lateinit var updateText: TextView
     private val updateListener: (String) -> Unit = { updateText.text = updateLine(it) }
@@ -135,6 +136,11 @@ class SettingsActivity : Activity() {
         jarvisCheck.setTextColor(Color.WHITE)
         jarvisCheck.isChecked = prefs.jarvisWakeWord
         column.addView(jarvisCheck)
+        onDeviceCheck = CheckBox(this)
+        onDeviceCheck.text = "Reconnaître « Hey Jarvis » sur la tablette (sinon par Home Assistant)"
+        onDeviceCheck.setTextColor(Color.WHITE)
+        onDeviceCheck.isChecked = prefs.jarvisOnDevice
+        column.addView(onDeviceCheck)
         column.addView(button("Autoriser le micro") {
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 toast("Le micro est déjà autorisé")
@@ -204,7 +210,11 @@ class SettingsActivity : Activity() {
                 Jarvis.State.OFF, null -> "➖ Jarvis inactif (Home Assistant pas encore connecté, ou écoute désactivée)"
                 else -> "✅ Jarvis est en pleine conversation"
             },
-            "Le mot « Hey Jarvis » est reconnu par Home Assistant (openWakeWord)."
+            if (ApiService.instance?.jarvis?.detectsOnDevice == true) {
+                "« Hey Jarvis » est reconnu directement par la tablette."
+            } else {
+                "« Hey Jarvis » est reconnu par Home Assistant (openWakeWord)."
+            }
         ).joinToString("\n")
     }
 
@@ -244,7 +254,9 @@ class SettingsActivity : Activity() {
                 prefs.autoUpdate = updateCheck.isChecked
                 val wakeChanged = prefs.jarvisWakeWord != jarvisCheck.isChecked
                 prefs.jarvisWakeWord = jarvisCheck.isChecked
-                if (wakeChanged) ApiService.instance?.jarvis?.onSettingsChanged()
+                val modeChanged = prefs.jarvisOnDevice != onDeviceCheck.isChecked
+                prefs.jarvisOnDevice = onDeviceCheck.isChecked
+                if (wakeChanged || modeChanged) ApiService.instance?.jarvis?.onSettingsChanged()
                 if (saverMinutes >= 1) prefs.screensaverMinutes = saverMinutes
                 prefs.dockApps = dockSelection.toList()
                 prefs.videoApps = videoSelection.toSet()

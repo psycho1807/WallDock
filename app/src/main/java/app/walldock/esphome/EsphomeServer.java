@@ -46,11 +46,14 @@ public final class EsphomeServer {
         void onAnnounce(String mediaId, String text, String preannounceMediaId, boolean startConversation);
         /** HA demande d'arrêter le pipeline en cours. */
         void onVoiceStopRequested();
+        /** Minuteur vocal : démarré (0), mis à jour (1), annulé (2) ou terminé (3). */
+        void onTimerEvent(int eventType, String timerId, String name, int totalSeconds, int secondsLeft, boolean active);
     }
 
     // Fonctions d'assistant vocal annoncées à HA (DeviceInfo, champ 17)
     public static final int VOICE_FEATURE_VOICE_ASSISTANT = 1;
     public static final int VOICE_FEATURE_API_AUDIO = 1 << 2;
+    public static final int VOICE_FEATURE_TIMERS = 1 << 3;
     public static final int VOICE_FEATURE_ANNOUNCE = 1 << 4;
     public static final int VOICE_FEATURE_START_CONVERSATION = 1 << 5;
 
@@ -126,6 +129,7 @@ public final class EsphomeServer {
     private static final int VOICE_ASSISTANT_RESPONSE = 91;
     private static final int VOICE_ASSISTANT_EVENT = 92;
     private static final int VOICE_ASSISTANT_AUDIO = 106;
+    private static final int VOICE_ASSISTANT_TIMER_EVENT = 115;
     private static final int VOICE_ASSISTANT_ANNOUNCE_REQUEST = 119;
     private static final int VOICE_ASSISTANT_ANNOUNCE_FINISHED = 120;
     private static final int VOICE_ASSISTANT_CONFIGURATION_REQUEST = 121;
@@ -434,6 +438,15 @@ public final class EsphomeServer {
                     }
                     VoiceHandler vh = voiceHandler;
                     if (vh != null) vh.onVoiceEvent(Proto.getInt(f, 1), data);
+                    return true;
+                }
+                case VOICE_ASSISTANT_TIMER_EVENT: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    VoiceHandler vh = voiceHandler;
+                    if (vh != null) {
+                        vh.onTimerEvent(Proto.getInt(f, 1), Proto.getString(f, 2), Proto.getString(f, 3),
+                            Proto.getInt(f, 4), Proto.getInt(f, 5), Proto.getBool(f, 6));
+                    }
                     return true;
                 }
                 case VOICE_ASSISTANT_ANNOUNCE_REQUEST: {
