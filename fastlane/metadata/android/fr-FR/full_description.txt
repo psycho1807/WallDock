@@ -1,0 +1,11 @@
+<p>WallDock transforme une tablette Android en écran mural pour <b>Home Assistant</b>.</p>
+<p><b>Kiosque</b></p>
+<ul>
+<li>Tableau de bord Home Assistant en plein écran, écran toujours allumé</li>
+<li>Dock d'applis autorisées, retour automatique au tableau de bord après inactivité</li>
+<li>Réglages protégés par un code, écran d'accueil de la tablette</li>
+<li>Écran de veille horloge, écran de secours quand Home Assistant ne répond pas</li>
+</ul>
+<p><b>Intégration Home Assistant</b> (API native ESPHome, découverte automatique) : batterie, écran, luminosité, volume, appli ouverte, ouverture d'applis et de pages, alertes plein écran avec compte à rebours, synthèse vocale et sons.</p>
+<p><b>Jarvis, assistant vocal</b> : satellite Assist avec mot d'activation « Hey Jarvis » reconnu sur la tablette ou par Home Assistant, visage animé, annonces et minuteurs vocaux.</p>
+<p>Les modèles de mot d'activation (openWakeWord, licence CC BY-NC-SA 4.0) sont téléchargés depuis GitHub au premier usage.</p>

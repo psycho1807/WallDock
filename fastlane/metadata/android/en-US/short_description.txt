@@ -1,0 +1,1 @@
+Home Assistant wall-panel kiosk with a built-in voice assistant

@@ -1,0 +1,1 @@
+Kiosque pour tablette murale Home Assistant, avec assistant vocal Jarvis
