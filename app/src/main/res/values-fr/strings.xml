@@ -143,4 +143,24 @@
     <string name="jarvis_state_thinking">Réfléchit</string>
     <string name="jarvis_state_speaking">Parle</string>
     <string name="entity_lecteur">Lecteur</string>
+    <string name="detect_tablet_voices">Tablette (%1$d voix apprises)</string>
+    <string name="settings_sensitivity">Sensibilité de « Hey Jarvis »</string>
+    <string name="sensitivity_normal">Normale</string>
+    <string name="sensitivity_high">Élevée (reconnaît plus facilement, peut se déclencher pour rien de temps en temps)</string>
+    <string name="sensitivity_very_high">Très élevée (conseillée avec des voix apprises)</string>
+    <string name="voice_help">Apprendre une voix : dites 8 fois « Hey Jarvis », puis laissez la pièce faire ses bruits habituels pendant 20 secondes. Jarvis connaît alors votre façon de le dire et peut être plus sensible sans se déclencher pour rien. À refaire pour chaque personne de la maison.</string>
+    <string name="voice_learn">Apprendre une voix</string>
+    <string name="voice_forget">Oublier les voix apprises</string>
+    <string name="voice_forgotten">Voix apprises oubliées</string>
+    <string name="voice_count">🎙 Voix apprises : %1$d</string>
+    <string name="voice_none">🎙 Aucune voix apprise</string>
+    <string name="voice_needs_tablet">Jarvis doit attendre « Hey Jarvis », reconnu par la tablette (voir les options ci-dessus).</string>
+    <string name="voice_get_ready">Préparez-vous…\n(%1$d / %2$d)</string>
+    <string name="voice_say_now">Dites « Hey Jarvis » maintenant\n(%1$d / %2$d)</string>
+    <string name="voice_not_heard">Je n’ai pas entendu, on recommence</string>
+    <string name="voice_not_heard_stop">Je n’entends pas « Hey Jarvis ». Rapprochez-vous de la tablette et réessayez.</string>
+    <string name="voice_room">Maintenant, parlez normalement ou laissez la télé, SANS dire « Hey Jarvis »…\n(20 secondes)</string>
+    <string name="voice_computing">Apprentissage…</string>
+    <string name="voice_done">C’est fait ! Jarvis connaît maintenant cette voix. Choisissez la sensibilité « Très élevée » puis enregistrez.</string>
+    <string name="voice_failed">L’apprentissage a échoué, réessayez.</string>
 </resources>

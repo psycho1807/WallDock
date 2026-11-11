@@ -1,0 +1,2 @@
+• Adjustable "Hey Jarvis" sensitivity (normal, high, very high)
+• Learn a voice: Jarvis learns how you say "Hey Jarvis" (everything stays on the tablet)

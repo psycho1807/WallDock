@@ -144,4 +144,24 @@
     <string name="jarvis_state_thinking">Thinking</string>
     <string name="jarvis_state_speaking">Speaking</string>
     <string name="entity_lecteur">Player</string>
+    <string name="detect_tablet_voices">Tablet (%1$d learned voices)</string>
+    <string name="settings_sensitivity">“Hey Jarvis” sensitivity</string>
+    <string name="sensitivity_normal">Normal</string>
+    <string name="sensitivity_high">High (recognizes more easily, may trigger by mistake now and then)</string>
+    <string name="sensitivity_very_high">Very high (recommended with learned voices)</string>
+    <string name="voice_help">Learning a voice: say “Hey Jarvis” 8 times, then let the room sound as usual for 20 seconds. Jarvis then knows how you say it and can be more sensitive without triggering by mistake. Repeat for each person in the house.</string>
+    <string name="voice_learn">Learn a voice</string>
+    <string name="voice_forget">Forget learned voices</string>
+    <string name="voice_forgotten">Learned voices forgotten</string>
+    <string name="voice_count">🎙 Learned voices: %1$d</string>
+    <string name="voice_none">🎙 No learned voice</string>
+    <string name="voice_needs_tablet">Jarvis must be waiting for “Hey Jarvis”, recognized by the tablet (see the options above).</string>
+    <string name="voice_get_ready">Get ready…\n(%1$d / %2$d)</string>
+    <string name="voice_say_now">Say “Hey Jarvis” now\n(%1$d / %2$d)</string>
+    <string name="voice_not_heard">I didn’t hear it, let’s try again</string>
+    <string name="voice_not_heard_stop">I can’t hear “Hey Jarvis”. Get closer to the tablet and try again.</string>
+    <string name="voice_room">Now talk normally, or let the TV play, WITHOUT saying “Hey Jarvis”…\n(20 seconds)</string>
+    <string name="voice_computing">Learning…</string>
+    <string name="voice_done">Done! Jarvis now knows this voice. Choose the “Very high” sensitivity and save.</string>
+    <string name="voice_failed">Learning failed, please try again.</string>
 </resources>

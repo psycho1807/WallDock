@@ -96,6 +96,13 @@ class WakeWordDetector private constructor(dir: File) {
         return if (predictions <= WARMUP_PREDICTIONS) 0f else wakeOutput[0][0]
     }
 
+    /** Empreintes vocales vues par le modèle au dernier calcul (16 × 96), pour le filtre « voix apprises ». */
+    fun lastFeatures(): FloatArray {
+        val out = FloatArray(FEATURE_SIZE)
+        for (r in 0 until FEATURE_FRAMES) System.arraycopy(wakeInput[0][r], 0, out, r * EMBEDDING_SIZE, EMBEDDING_SIZE)
+        return out
+    }
+
     fun close() {
         mel.close()
         embedding.close()
@@ -111,6 +118,7 @@ class WakeWordDetector private constructor(dir: File) {
         private const val EMBEDDING_SIZE = 96
         private const val FEATURE_FRAMES = 16
         private const val WARMUP_PREDICTIONS = 5
+        const val FEATURE_SIZE = FEATURE_FRAMES * EMBEDDING_SIZE
 
         private const val MEL_MODEL = "melspectrogram.tflite"
         private const val EMBEDDING_MODEL = "embedding_model.tflite"

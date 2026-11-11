@@ -32,6 +32,7 @@ class SettingsActivity : Activity() {
     private lateinit var delayField: EditText
     private lateinit var statusText: TextView
     private lateinit var handleGroup: RadioGroup
+    private lateinit var sensitivityGroup: RadioGroup
     private lateinit var haStatusText: TextView
     private lateinit var saverCheck: CheckBox
     private lateinit var saverField: EditText
@@ -141,6 +142,27 @@ class SettingsActivity : Activity() {
         onDeviceCheck.setTextColor(Color.WHITE)
         onDeviceCheck.isChecked = prefs.jarvisOnDevice
         column.addView(onDeviceCheck)
+        column.addView(label(tr(R.string.settings_sensitivity)))
+        sensitivityGroup = RadioGroup(this)
+        val levels = listOf(tr(R.string.sensitivity_normal), tr(R.string.sensitivity_high), tr(R.string.sensitivity_very_high))
+        levels.forEachIndexed { index, text ->
+            val choice = RadioButton(this)
+            choice.id = View.generateViewId()
+            choice.text = text
+            choice.tag = index
+            choice.setTextColor(Color.WHITE)
+            sensitivityGroup.addView(choice)
+            if (index == prefs.jarvisSensitivity) sensitivityGroup.check(choice.id)
+        }
+        column.addView(sensitivityGroup)
+        column.addView(label(tr(R.string.voice_help)))
+        column.addView(button(tr(R.string.voice_learn)) { VoiceTraining(this).start() })
+        column.addView(button(tr(R.string.voice_forget)) {
+            VoiceVerifier.forget(this)
+            ApiService.instance?.jarvis?.reloadVoiceSettings()
+            updateJarvisStatus()
+            toast(tr(R.string.voice_forgotten))
+        })
         column.addView(button(tr(R.string.settings_allow_mic)) {
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 toast(tr(R.string.settings_mic_already))
@@ -200,7 +222,7 @@ class SettingsActivity : Activity() {
         }
     }
 
-    private fun updateJarvisStatus() {
+    fun updateJarvisStatus() {
         val mic = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         val state = ApiService.instance?.jarvis?.state
         jarvisText.text = listOf(
@@ -214,6 +236,9 @@ class SettingsActivity : Activity() {
                 tr(R.string.jarvis_detect_tablet)
             } else {
                 tr(R.string.jarvis_detect_ha)
+            },
+            (ApiService.instance?.jarvis?.learnedVoices ?: 0).let {
+                if (it > 0) tr(R.string.voice_count, it) else tr(R.string.voice_none)
             }
         ).joinToString("\n")
     }
@@ -257,6 +282,9 @@ class SettingsActivity : Activity() {
                 val modeChanged = prefs.jarvisOnDevice != onDeviceCheck.isChecked
                 if (modeChanged && onDeviceCheck.isChecked) WakeWordDetector.clearCrash(this)
                 prefs.jarvisOnDevice = onDeviceCheck.isChecked
+                val level = sensitivityGroup.findViewById<RadioButton>(sensitivityGroup.checkedRadioButtonId)
+                prefs.jarvisSensitivity = (level?.tag as? Int) ?: 0
+                ApiService.instance?.jarvis?.reloadVoiceSettings()
                 if (wakeChanged || modeChanged) ApiService.instance?.jarvis?.onSettingsChanged()
                 if (saverMinutes >= 1) prefs.screensaverMinutes = saverMinutes
                 prefs.dockApps = dockSelection.toList()

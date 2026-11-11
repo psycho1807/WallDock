@@ -40,11 +40,36 @@ class Jarvis(
     private var stopDetector: app.walldock.wakeword.StopWordDetector? = null
     private var stopListening = false
 
+    /** Voix apprises (null : modèle seul) et seuils selon la sensibilité choisie. */
+    @Volatile
+    private var verifier: VoiceVerifier? = null
+    @Volatile
+    private var wakeThreshold = 0.5f
+    @Volatile
+    private var verifierGate = 0.2f
+
+    /** Reçoit (score, empreintes) pendant l'apprentissage d'une voix ; rien n'est déclenché. */
+    @Volatile
+    var trainingSink: ((Float, FloatArray) -> Unit)? = null
+
+    /** Relit la sensibilité et les voix apprises (réglages modifiés ou nouvel apprentissage). */
+    fun reloadVoiceSettings() {
+        val sensitivity = Prefs(context).jarvisSensitivity
+        wakeThreshold = WAKE_THRESHOLDS[sensitivity.coerceIn(0, 2)]
+        verifierGate = VERIFIER_GATES[sensitivity.coerceIn(0, 2)]
+        verifier = VoiceVerifier.load(context)
+    }
+
+    /** Nombre de voix apprises. */
+    val learnedVoices: Int
+        get() = verifier?.voices ?: 0
+
     /** Dernier score du mot « Stop » (0–1), pour le diagnostic. */
     val stopScore: Float
         get() = stopDetector?.lastScore ?: 0f
 
     init {
+        reloadVoiceSettings()
         Thread({ stopDetector = app.walldock.wakeword.StopWordDetector.load(context) }, "jarvis-stop").start()
     }
 
@@ -68,6 +93,7 @@ class Jarvis(
     val detectionStatus: String
         get() = when {
             !onDeviceEnabled -> tr(R.string.detect_ha_chosen)
+            detector != null && learnedVoices > 0 -> tr(R.string.detect_tablet_voices, learnedVoices)
             detector != null -> tr(R.string.detect_tablet)
             loadingDetector -> tr(R.string.detect_preparing)
             else -> tr(R.string.detect_ha_reason, WakeWordDetector.lastError ?: tr(R.string.models_missing))
@@ -524,10 +550,22 @@ class Jarvis(
                     -1f
                 }
                 if (score > wakeScorePeak) wakeScorePeak = score
-                val now = android.os.SystemClock.elapsedRealtime()
-                if (score >= WAKE_THRESHOLD && now - lastDetection > 2_000) {
-                    lastDetection = now
-                    main.post { onLocalWakeWord() }
+                val sink = trainingSink
+                if (sink != null) {
+                    // Apprentissage d'une voix en cours : on transmet, on ne déclenche rien
+                    if (score >= 0f) sink(score, wake.lastFeatures())
+                } else if (score >= 0f) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    val voice = verifier
+                    val heard = if (voice != null) {
+                        score >= verifierGate && voice.predict(wake.lastFeatures()) >= VERIFIER_CUTOFF
+                    } else {
+                        score >= wakeThreshold
+                    }
+                    if (heard && now - lastDetection > 2_000) {
+                        lastDetection = now
+                        main.post { onLocalWakeWord() }
+                    }
                 }
             }
             // Traitements du son (bruit, gain, écho) seulement pour la phrase envoyée à HA :
@@ -705,7 +743,10 @@ class Jarvis(
         /** 1 024 échantillons = 64 ms de son par envoi. */
         private const val CHUNK_BYTES = 2_048
         /** Seuil de détection de « Hey Jarvis » (comme l'appli openWakeWord de HA). */
-        private const val WAKE_THRESHOLD = 0.5f
+        private val WAKE_THRESHOLDS = floatArrayOf(0.5f, 0.35f, 0.25f)
+        /** Avec des voix apprises : le modèle n'a qu'à « soupçonner » le mot, le filtre décide. */
+        private val VERIFIER_GATES = floatArrayOf(0.2f, 0.12f, 0.06f)
+        private const val VERIFIER_CUTOFF = 0.6f
         /** Durée du bip de début d'écoute, remplacée par du silence dans le son envoyé à HA. */
         private const val BEEP_MUTE_MS = 300L
 
