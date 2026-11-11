@@ -1,0 +1,3 @@
+• afficher_camera action: a Home Assistant camera full screen (doorbell…)
+• "Screen capture" camera in HA to see what the tablet shows
+• Back up and restore the settings to a file

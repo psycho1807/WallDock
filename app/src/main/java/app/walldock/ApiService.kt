@@ -86,10 +86,12 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val wakeScore = Entity(Entity.Kind.SENSOR, "score_hey_jarvis", tr(R.string.entity_score_hey_jarvis))
         .unit("%").measurement().icon("mdi:waveform").category(Entity.CATEGORY_DIAGNOSTIC)
 
+    private val screenCamera = Entity(Entity.Kind.CAMERA, "capture_ecran", tr(R.string.entity_capture_ecran))
+        .icon("mdi:monitor-screenshot").category(Entity.CATEGORY_DIAGNOSTIC)
     private val mediaEntity = Entity(Entity.Kind.MEDIA_PLAYER, "lecteur", tr(R.string.entity_lecteur)).icon("mdi:speaker")
 
     private val entities = listOf(
-        mediaEntity, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
+        mediaEntity, screenCamera, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate
     )
@@ -143,9 +145,17 @@ class ApiService : Service(), EsphomeServer.Handler {
         .arg("secondes", UserService.ARG_INT)
     private val closeAlertService = UserService("fermer_alerte")
     private val playSoundService = UserService("jouer_son").arg("adresse", UserService.ARG_STRING)
+    private val showCameraService = UserService("afficher_camera")
+        .arg("camera", UserService.ARG_STRING)
+        .arg("titre", UserService.ARG_STRING)
+        .arg("secondes", UserService.ARG_INT)
     private val services = listOf(
-        speakService, openPageService, openAppService, showAlertService, closeAlertService, playSoundService
+        speakService, openPageService, openAppService, showAlertService, closeAlertService, playSoundService,
+        showCameraService
     )
+    private lateinit var cameraOverlay: CameraOverlay
+    /** Caméra HA demandée (entity_id), en attente de son adresse : (titre, secondes). */
+    private var pendingCamera: Triple<String, String, Int>? = null
     private var player: MediaPlayer? = null
 
     private lateinit var alertOverlay: AlertOverlay
@@ -217,6 +227,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.postDelayed(updateCheck, 60_000)
         main.postDelayed(micReport, 5_000)
         alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
+        cameraOverlay = CameraOverlay(this) { server?.setState(alertShown, alertOverlay.isShowing) }
 
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -256,6 +267,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.removeCallbacks(micReport)
         Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
+        cameraOverlay.close(notify = false)
         player?.release()
         player = null
         tts?.shutdown()
@@ -322,6 +334,86 @@ class ApiService : Service(), EsphomeServer.Handler {
         val current = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
         server?.setState(volume, (current * 100f / max).toInt().toFloat())
         mediaPlayer?.report()
+    }
+
+    /**
+     * Caméra en plein écran : soit une entité HA (camera.sonnette), dont on demande l'adresse
+     * du flux à HA, soit directement une adresse d'image ou de flux MJPEG.
+     */
+    private fun showCamera(camera: String, title: String, seconds: Int) {
+        val target = camera.trim()
+        if (target.isEmpty()) return
+        if (target.startsWith("camera.")) {
+            pendingCamera = Triple(target, title, seconds)
+            if (server?.requestHomeAssistantState(target, "entity_picture") != true) pendingCamera = null
+        } else {
+            displayCamera(Prefs(this).absoluteUrl(target), title, seconds)
+        }
+    }
+
+    private fun displayCamera(url: String, title: String, seconds: Int) {
+        wakeUp()
+        if (!AppState.screenOn) setScreen(true)
+        if (cameraOverlay.show(url, title, seconds)) server?.setState(alertShown, true)
+    }
+
+    override fun onHomeAssistantState(entityId: String, attribute: String, state: String) {
+        main.post {
+            val pending = pendingCamera ?: return@post
+            if (entityId != pending.first || attribute != "entity_picture") return@post
+            pendingCamera = null
+            if (state.isBlank() || state == "None") return@post
+            // Image fixe → flux vidéo MJPEG (même jeton d'accès)
+            val stream = state.replace("/api/camera_proxy/", "/api/camera_proxy_stream/")
+            displayCamera(Prefs(this).absoluteUrl(stream), pending.second, pending.third)
+        }
+    }
+
+    /** HA demande une image de l'entité « Capture d'écran ». */
+    override fun onCameraRequest(entity: Entity) {
+        main.post {
+            if (capturing) return@post
+            capturing = true
+            val controller = AppState.controller
+            val deliver: (android.graphics.Bitmap?) -> Unit = { bitmap ->
+                Thread({
+                    val jpeg = encodeScreenshot(bitmap)
+                    server?.sendCameraImage(entity, jpeg)
+                    main.post { capturing = false }
+                }, "walldock-capture").start()
+            }
+            if (controller == null) deliver(null) else controller.captureScreen(deliver)
+        }
+    }
+
+    private var capturing = false
+
+    private fun encodeScreenshot(source: android.graphics.Bitmap?): ByteArray {
+        val bitmap = if (source != null) {
+            val scale = minOf(1f, 1280f / source.width)
+            if (scale < 1f) {
+                android.graphics.Bitmap.createScaledBitmap(source, (source.width * scale).toInt(), (source.height * scale).toInt(), true)
+            } else {
+                source
+            }
+        } else {
+            // WallDock n'est pas affiché (autre appli ouverte, écran éteint…) : image explicative
+            val image = android.graphics.Bitmap.createBitmap(640, 360, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(image)
+            canvas.drawColor(android.graphics.Color.BLACK)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            paint.color = android.graphics.Color.WHITE
+            paint.textSize = 26f
+            paint.textAlign = android.graphics.Paint.Align.CENTER
+            canvas.drawText(tr(R.string.capture_unavailable), 320f, 170f, paint)
+            paint.textSize = 20f
+            paint.color = 0xFF8FA8C8.toInt()
+            canvas.drawText(AppState.currentApp, 320f, 210f, paint)
+            image
+        }
+        val out = java.io.ByteArrayOutputStream()
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
+        return out.toByteArray()
     }
 
     override fun onMediaPlayer(entity: Entity, command: Int?, volume: Float?, url: String?, announcement: Boolean) {
@@ -404,8 +496,15 @@ class ApiService : Service(), EsphomeServer.Handler {
                 )
                 service === closeAlertService -> {
                     alertOverlay.close(notify = false)
+                    cameraOverlay.close(notify = false)
+                    pendingCamera = null
                     server?.setState(alertShown, false)
                 }
+                service === showCameraService -> showCamera(
+                    args["camera"] as? String ?: "",
+                    args["titre"] as? String ?: "",
+                    args["secondes"] as? Int ?: 0
+                )
             }
         }
     }

@@ -188,6 +188,11 @@ class SettingsActivity : Activity() {
         })
         column.addView(button(tr(R.string.settings_check_now)) { Updater.check(this, install = true) })
 
+        column.addView(heading(tr(R.string.backup_title), 18f))
+        column.addView(label(tr(R.string.backup_help)))
+        column.addView(button(tr(R.string.backup_export)) { SettingsBackup.startExport(this) })
+        column.addView(button(tr(R.string.backup_import)) { SettingsBackup.startImport(this) })
+
         column.addView(heading(tr(R.string.settings_dock_apps), 18f))
         column.addView(label(tr(R.string.settings_dock_help)))
         for (app in Apps.listLaunchable(this)) column.addView(appRow(app))
@@ -248,6 +253,26 @@ class SettingsActivity : Activity() {
         return tr(R.string.update_installed_version, BuildConfig.VERSION_NAME) + "\n" +
             (if (allowed) tr(R.string.update_install_allowed) else tr(R.string.update_install_denied)) +
             "\n$status"
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) return
+        when (requestCode) {
+            SettingsBackup.REQUEST_EXPORT ->
+                toast(tr(if (SettingsBackup.write(this, uri)) R.string.backup_saved else R.string.backup_failed))
+            SettingsBackup.REQUEST_IMPORT -> {
+                if (SettingsBackup.read(this, uri)) {
+                    toast(tr(R.string.backup_restored))
+                    window.decorView.postDelayed({ SettingsBackup.restartApp(this) }, 1_500)
+                } else {
+                    toast(tr(R.string.backup_invalid))
+                }
+            }
+        }
     }
 
     @Deprecated("Deprecated in Java")

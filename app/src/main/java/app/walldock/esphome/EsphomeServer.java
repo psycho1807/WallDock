@@ -37,6 +37,10 @@ public final class EsphomeServer {
          * valent null quand HA ne les envoie pas.
          */
         default void onMediaPlayer(Entity entity, Integer command, Float volume, String url, boolean announcement) {}
+        /** HA demande une image d'une entité caméra : répondre avec sendCameraImage(). */
+        default void onCameraRequest(Entity entity) {}
+        /** Réponse de HA à requestHomeAssistantState() (état ou attribut d'une entité HA). */
+        default void onHomeAssistantState(String entityId, String attribute, String state) {}
     }
 
     // Commandes du lecteur multimédia (MediaPlayerCommand)
@@ -145,6 +149,12 @@ public final class EsphomeServer {
     private static final int SELECT_STATE = 53;
     private static final int SELECT_COMMAND = 54;
     private static final int LIST_MEDIA_PLAYER = 63;
+    private static final int LIST_CAMERA = 43;
+    private static final int CAMERA_IMAGE = 44;
+    private static final int CAMERA_IMAGE_REQUEST = 45;
+    private static final int SUBSCRIBE_HA_STATES = 38;
+    private static final int HA_STATE_SUBSCRIPTION = 39;
+    private static final int HA_STATE = 40;
     private static final int MEDIA_PLAYER_STATE = 64;
     private static final int MEDIA_PLAYER_COMMAND = 65;
     private static final int SUBSCRIBE_VOICE_ASSISTANT = 89;
@@ -289,6 +299,49 @@ public final class EsphomeServer {
     }
 
     /** Fin de lecture d'une annonce. */
+    /** Envoie une image JPEG pour une entité caméra (en morceaux, comme ESPHome). */
+    public void sendCameraImage(Entity entity, byte[] jpeg) {
+        sender.execute(() -> {
+            for (Client client : clients) {
+                if (!client.subscribed) continue;
+                int offset = 0;
+                do {
+                    int size = Math.min(CAMERA_CHUNK, jpeg.length - offset);
+                    byte[] part = java.util.Arrays.copyOfRange(jpeg, offset, offset + size);
+                    offset += size;
+                    client.trySend(CAMERA_IMAGE, new Proto.Writer()
+                        .fixed32(1, entity.key)
+                        .message(2, part)
+                        .bool(3, offset >= jpeg.length)
+                        .bytes());
+                } while (offset < jpeg.length);
+            }
+        });
+    }
+
+    private static final int CAMERA_CHUNK = 16 * 1024;
+
+    /**
+     * Demande une fois à HA l'état d'une entité (ou l'un de ses attributs) ;
+     * la réponse arrive dans Handler.onHomeAssistantState. Faux si HA n'est pas connecté.
+     */
+    public boolean requestHomeAssistantState(String entityId, String attribute) {
+        boolean any = false;
+        for (Client client : clients) if (client.haStates) any = true;
+        if (!any) return false;
+        sender.execute(() -> {
+            for (Client client : clients) {
+                if (!client.haStates) continue;
+                client.trySend(HA_STATE_SUBSCRIPTION, new Proto.Writer()
+                    .string(1, entityId)
+                    .string(2, attribute)
+                    .bool(3, true)
+                    .bytes());
+            }
+        });
+        return true;
+    }
+
     public void voiceAnnounceFinished(boolean success) {
         sender.execute(() -> {
             Client client = voiceClient;
@@ -317,6 +370,8 @@ public final class EsphomeServer {
         private final InputStream in;
         private final OutputStream out;
         volatile boolean subscribed;
+        /** HA accepte de nous donner l'état de ses entités. */
+        volatile boolean haStates;
 
         Client(Socket socket) throws IOException {
             this.socket = socket;
@@ -371,6 +426,24 @@ public final class EsphomeServer {
                     for (UserService service : services) send(LIST_SERVICES, describe(service));
                     send(LIST_ENTITIES_DONE, new byte[0]);
                     return true;
+                case SUBSCRIBE_HA_STATES:
+                    haStates = true;
+                    return true;
+                case HA_STATE: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    if (handler != null) {
+                        handler.onHomeAssistantState(Proto.getString(f, 1), Proto.getString(f, 3), Proto.getString(f, 2));
+                    }
+                    return true;
+                }
+                case CAMERA_IMAGE_REQUEST: {
+                    if (handler != null) {
+                        for (Entity entity : entities) {
+                            if (entity.kind == Entity.Kind.CAMERA) handler.onCameraRequest(entity);
+                        }
+                    }
+                    return true;
+                }
                 case MEDIA_PLAYER_COMMAND: {
                     Map<Integer, Object> f = Proto.read(payload);
                     Entity entity = find(Proto.getInt(f, 1), Entity.Kind.MEDIA_PLAYER);
@@ -580,7 +653,8 @@ public final class EsphomeServer {
                         break;
                     }
                     case BUTTON:
-                        break; // un bouton n'a pas d'état
+                    case CAMERA:
+                        break; // pas d'état (la caméra envoie ses images à la demande)
                 }
             } catch (IOException e) {
                 close();
@@ -596,6 +670,7 @@ public final class EsphomeServer {
                 case BUTTON: return LIST_BUTTON;
                 case SELECT: return LIST_SELECT;
                 case MEDIA_PLAYER: return LIST_MEDIA_PLAYER;
+                case CAMERA: return LIST_CAMERA;
                 default: return LIST_TEXT_SENSOR;
             }
         }
@@ -633,6 +708,8 @@ public final class EsphomeServer {
                     for (String option : e.options) w.stringAlways(6, option);
                     return w.varint(8, e.entityCategory).bytes();
                 }
+                case CAMERA:
+                    return w.string(6, e.icon).varint(7, e.entityCategory).bytes();
                 case MEDIA_PLAYER:
                     return w.string(5, e.icon).varint(7, e.entityCategory).bool(8, true)
                         .varint(11, MEDIA_FEATURES).bytes();

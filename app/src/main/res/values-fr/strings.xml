@@ -163,4 +163,16 @@
     <string name="voice_computing">Apprentissage…</string>
     <string name="voice_done">C’est fait ! Jarvis connaît maintenant cette voix. Choisissez la sensibilité « Très élevée » puis enregistrez.</string>
     <string name="voice_failed">L’apprentissage a échoué, réessayez.</string>
+    <string name="entity_capture_ecran">Capture d’écran</string>
+    <string name="camera_default_title">Caméra</string>
+    <string name="camera_close">Fermer</string>
+    <string name="capture_unavailable">WallDock n’est pas affiché</string>
+    <string name="backup_title">Sauvegarde</string>
+    <string name="backup_help">Enregistre tous les réglages (adresse, code, dock, Jarvis, voix apprises) dans un fichier, pour les remettre après une réinstallation ou les copier sur une autre tablette.</string>
+    <string name="backup_export">Sauvegarder les réglages…</string>
+    <string name="backup_import">Restaurer des réglages…</string>
+    <string name="backup_saved">Réglages enregistrés dans le fichier</string>
+    <string name="backup_failed">Impossible d’écrire le fichier</string>
+    <string name="backup_restored">Réglages restaurés, WallDock redémarre…</string>
+    <string name="backup_invalid">Ce fichier n’est pas une sauvegarde WallDock</string>
 </resources>

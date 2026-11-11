@@ -1,0 +1,3 @@
+• Action afficher_camera : une caméra HA en plein écran (sonnette…)
+• Caméra « Capture d'écran » dans HA pour voir ce qu'affiche la tablette
+• Sauvegarde et restauration des réglages dans un fichier

@@ -404,6 +404,23 @@ class MainActivity : Activity(), DashboardController {
         handle.layoutParams = params
     }
 
+    override fun captureScreen(done: (android.graphics.Bitmap?) -> Unit) {
+        val decor = window?.decorView
+        if (!AppState.dashboardVisible || decor == null || decor.width <= 0 || decor.height <= 0) {
+            done(null)
+            return
+        }
+        // PixelCopy copie la vraie image de la fenêtre (y compris la page web accélérée)
+        val bitmap = android.graphics.Bitmap.createBitmap(decor.width, decor.height, android.graphics.Bitmap.Config.ARGB_8888)
+        try {
+            android.view.PixelCopy.request(window, bitmap, { result ->
+                done(if (result == android.view.PixelCopy.SUCCESS) bitmap else null)
+            }, handler)
+        } catch (e: Exception) {
+            done(null)
+        }
+    }
+
     override fun onPause() {
         handler.removeCallbacks(screensaverCheck)
         handler.removeCallbacks(healthCheck)

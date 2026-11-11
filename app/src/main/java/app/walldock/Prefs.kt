@@ -152,4 +152,6 @@ interface DashboardController {
     fun showHome()
     fun openApp(packageName: String)
     fun openUrl(url: String)
+    /** Capture de l'écran de WallDock (null si WallDock n'est pas affiché). */
+    fun captureScreen(done: (android.graphics.Bitmap?) -> Unit) = done(null)
 }
