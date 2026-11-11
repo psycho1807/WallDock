@@ -346,9 +346,22 @@ class ApiService : Service(), EsphomeServer.Handler {
         if (target.startsWith("camera.")) {
             pendingCamera = Triple(target, title, seconds)
             if (server?.requestHomeAssistantState(target, "entity_picture") != true) pendingCamera = null
-        } else {
+        } else if (isImageAddress(target)) {
             displayCamera(Prefs(this).absoluteUrl(target), title, seconds)
+        } else {
+            // Une page du tableau de bord (ex. /sonnette-ring/live) : la vidéo en direct
+            // passe par l'interface de HA (WebRTC/HLS), comme sur le tableau de bord
+            val url = resolvePageUrl(target) ?: return
+            wakeUp()
+            if (!AppState.screenOn) setScreen(true)
+            if (cameraOverlay.showPage(url, title, seconds)) server?.setState(alertShown, true)
         }
+    }
+
+    private fun isImageAddress(address: String): Boolean {
+        val path = address.substringBefore('?').lowercase()
+        return address.contains("/api/camera_proxy") || address.contains("/api/image") ||
+            listOf(".jpg", ".jpeg", ".png", ".gif", ".webp", ".mjpg", ".mjpeg", ".cgi").any { path.endsWith(it) }
     }
 
     private fun displayCamera(url: String, title: String, seconds: Int) {

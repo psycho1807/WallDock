@@ -37,8 +37,26 @@ class CameraOverlay(private val context: Context, private val onClosed: () -> Un
     val isShowing: Boolean
         get() = root != null
 
-    @SuppressLint("SetJavaScriptEnabled")
+    /** Image ou flux MJPEG (adresse d'image de HA, caméra IP…). */
     fun show(url: String, title: String, seconds: Int): Boolean {
+        val safeUrl = Html.escapeHtml(url)
+        val page = """
+            <html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+            <body style="margin:0;background:#000;height:100vh;display:flex;align-items:center;justify-content:center">
+            <img src="$safeUrl" style="max-width:100%;max-height:100%;object-fit:contain">
+            </body></html>
+        """.trimIndent()
+        return open(title, seconds) { it.loadDataWithBaseURL(Prefs(context).absoluteUrl("/"), page, "text/html", "utf-8", null) }
+    }
+
+    /**
+     * Page du tableau de bord HA (carte caméra en direct) : même session que le tableau de bord,
+     * donc déjà connectée, et la vidéo en direct (WebRTC/HLS) marche comme dans HA.
+     */
+    fun showPage(url: String, title: String, seconds: Int): Boolean = open(title, seconds) { it.loadUrl(url) }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun open(title: String, seconds: Int, load: (WebView) -> Unit): Boolean {
         if (!Settings.canDrawOverlays(context)) return false
         close(notify = false)
 
@@ -47,17 +65,13 @@ class CameraOverlay(private val context: Context, private val onClosed: () -> Un
 
         val view = WebView(context)
         view.setBackgroundColor(Color.BLACK)
+        view.settings.javaScriptEnabled = true
+        view.settings.domStorageEnabled = true
+        view.settings.mediaPlaybackRequiresUserGesture = false
         view.settings.loadWithOverviewMode = true
         view.settings.useWideViewPort = true
-        val safeUrl = Html.escapeHtml(url)
-        val page = """
-            <html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-            <body style="margin:0;background:#000;height:100vh;display:flex;align-items:center;justify-content:center">
-            <img src="$safeUrl" style="max-width:100%;max-height:100%;object-fit:contain">
-            </body></html>
-        """.trimIndent()
-        val base = Prefs(context).absoluteUrl("/")
-        view.loadDataWithBaseURL(base, page, "text/html", "utf-8", null)
+        view.webViewClient = android.webkit.WebViewClient()
+        load(view)
         frame.addView(view, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
         val bar = LinearLayout(context)
