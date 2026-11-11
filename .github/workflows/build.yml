@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,10 +24,51 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
+      # Pull requests (no access to the signing key): unsigned check build only
       - name: Build debug APK
+        if: github.event_name == 'pull_request'
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      - name: Decrypt signing key
+        if: github.event_name != 'pull_request'
+        env:
+          WALLDOCK_KEY_PASSWORD: ${{ secrets.WALLDOCK_KEY_PASSWORD }}
+        run: |
+          if [ -z "$WALLDOCK_KEY_PASSWORD" ]; then
+            echo "::error::Secret WALLDOCK_KEY_PASSWORD is missing"; exit 1
+          fi
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in app/release.jks.enc -out "$RUNNER_TEMP/walldock.jks" \
+            -pass env:WALLDOCK_KEY_PASSWORD
+
+      - name: Build signed release APK
+        if: github.event_name != 'pull_request'
+        env:
+          WALLDOCK_KEY_PASSWORD: ${{ secrets.WALLDOCK_KEY_PASSWORD }}
+        run: |
+          export WALLDOCK_KEYSTORE="$RUNNER_TEMP/walldock.jks"
+          gradle assembleRelease --no-daemon --stacktrace
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "WallDock-$VERSION.apk"
+          rm -f "$RUNNER_TEMP/walldock.jks"
+
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
-          name: WallDock-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: WallDock-apk
+          path: WallDock-*.apk
+
+      # A new release is published only when versionName changes
+      - name: Publish GitHub release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists, skipping"
+          else
+            gh release create "v$VERSION" "WallDock-$VERSION.apk" \
+              --title "WallDock $VERSION" \
+              --notes "$(git log -1 --pretty=%B | grep -v -e '^Co-Authored-By' -e '^Claude-Session')"
+          fi

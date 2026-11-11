@@ -47,6 +47,11 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_SAVER_MINUTES, 5)
         set(value) = sp.edit().putInt(KEY_SAVER_MINUTES, value).apply()
 
+    /** Installer automatiquement les nouvelles versions publiées sur GitHub. */
+    var autoUpdate: Boolean
+        get() = sp.getBoolean(KEY_AUTO_UPDATE, true)
+        set(value) = sp.edit().putBoolean(KEY_AUTO_UPDATE, value).apply()
+
     val isConfigured: Boolean
         get() = haUrl.isNotBlank() && pin.isNotBlank()
 
@@ -56,6 +61,7 @@ class Prefs(context: Context) {
         const val HANDLE_RIGHT_MIDDLE = "right_middle"
         const val HANDLE_HIDDEN = "hidden"
 
+        private const val KEY_AUTO_UPDATE = "auto_update"
         private const val KEY_HANDLE = "handle_position"
         private const val KEY_SAVER = "screensaver_enabled"
         private const val KEY_SAVER_MINUTES = "screensaver_minutes"

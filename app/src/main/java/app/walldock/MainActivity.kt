@@ -22,6 +22,8 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -30,6 +32,9 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextClock
 import android.widget.TextView
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.Executors
 
 /**
  * Écran principal : le tableau de bord Home Assistant en plein écran,
@@ -56,6 +61,18 @@ class MainActivity : Activity(), DashboardController {
         }
     }
 
+    // Écran de secours quand Home Assistant ne répond plus
+    private lateinit var offlineScreen: FrameLayout
+    private lateinit var offlineDetail: TextView
+    private val healthExecutor = Executors.newSingleThreadExecutor { Thread(it, "walldock-health") }
+    private var failedChecks = 0
+    private val healthCheck = object : Runnable {
+        override fun run() {
+            checkHomeAssistant()
+            handler.postDelayed(this, if (offlineScreen.visibility == View.VISIBLE) 5_000 else 15_000)
+        }
+    }
+
     private var loadedUrl = ""
     private val handler = Handler(Looper.getMainLooper())
     private val autoHideDock = Runnable { setDockVisible(false) }
@@ -73,10 +90,57 @@ class MainActivity : Activity(), DashboardController {
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
         web.settings.mediaPlaybackRequiresUserGesture = false
-        web.webViewClient = WebViewClient()
+        web.webViewClient = object : WebViewClient() {
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                // Seule la page principale compte (pas une image ou un script)
+                if (request.isForMainFrame) showOffline("La page n’a pas pu se charger (${error.description})")
+            }
+        }
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         root.addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
+        // Écran de secours : horloge et message tant que HA est injoignable ; le dock reste utilisable
+        offlineScreen = FrameLayout(this)
+        offlineScreen.setBackgroundColor(0xFF04070B.toInt())
+        offlineScreen.visibility = View.GONE
+        offlineScreen.isClickable = true
+        val offlineColumn = LinearLayout(this)
+        offlineColumn.orientation = LinearLayout.VERTICAL
+        offlineColumn.gravity = Gravity.CENTER_HORIZONTAL
+        val offlineClock = TextClock(this)
+        offlineClock.format24Hour = "HH:mm"
+        offlineClock.format12Hour = "HH:mm"
+        offlineClock.textSize = 96f
+        offlineClock.setTextColor(0xFFDBE9FF.toInt())
+        offlineColumn.addView(offlineClock)
+        val offlineTitle = TextView(this)
+        offlineTitle.text = "Home Assistant ne répond pas"
+        offlineTitle.textSize = 24f
+        offlineTitle.setTextColor(0xFFFFB347.toInt())
+        offlineTitle.gravity = Gravity.CENTER
+        offlineTitle.setPadding(0, dp(16), 0, dp(8))
+        offlineColumn.addView(offlineTitle)
+        offlineDetail = TextView(this)
+        offlineDetail.textSize = 15f
+        offlineDetail.setTextColor(0xFF7F9BC4.toInt())
+        offlineDetail.gravity = Gravity.CENTER
+        offlineColumn.addView(offlineDetail)
+        val retry = TextView(this)
+        retry.text = "Réessayer maintenant"
+        retry.textSize = 16f
+        retry.setTextColor(0xFF3FD4FF.toInt())
+        retry.setPadding(dp(20), dp(12), dp(20), dp(12))
+        retry.background = panelBackground(0x330A1634, 18)
+        retry.setOnClickListener {
+            offlineDetail.text = "Nouvel essai…"
+            checkHomeAssistant()
+        }
+        val retryParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+        retryParams.topMargin = dp(28)
+        offlineColumn.addView(retry, retryParams)
+        offlineScreen.addView(offlineColumn, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.CENTER))
+        root.addView(offlineScreen, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
         // Dock
         dockRow = LinearLayout(this)
@@ -213,6 +277,53 @@ class MainActivity : Activity(), DashboardController {
         lastTouch = SystemClock.elapsedRealtime()
         handler.removeCallbacks(screensaverCheck)
         handler.postDelayed(screensaverCheck, 15_000)
+        handler.removeCallbacks(healthCheck)
+        handler.postDelayed(healthCheck, 5_000)
+    }
+
+    /** Teste Home Assistant en arrière-plan ; bascule sur l'écran de secours ou recharge au retour. */
+    private fun checkHomeAssistant() {
+        val address = prefs.haUrl
+        if (address.isBlank()) return
+        healthExecutor.execute {
+            val reachable = try {
+                val connection = URL(address).openConnection() as HttpURLConnection
+                connection.connectTimeout = 4_000
+                connection.readTimeout = 4_000
+                connection.instanceFollowRedirects = false
+                try {
+                    connection.responseCode in 200..499
+                } finally {
+                    connection.disconnect()
+                }
+            } catch (e: Exception) {
+                false
+            }
+            handler.post { onHealthResult(reachable) }
+        }
+    }
+
+    private fun onHealthResult(reachable: Boolean) {
+        if (reachable) {
+            failedChecks = 0
+            if (offlineScreen.visibility == View.VISIBLE) {
+                offlineScreen.visibility = View.GONE
+                web.loadUrl(if (web.url.isNullOrBlank() || web.url == "about:blank") loadedUrl else web.url!!)
+            }
+        } else {
+            failedChecks++
+            // Deux échecs d'affilée pour ne pas clignoter sur une coupure d'une seconde
+            if (failedChecks >= 2) showOffline("Redémarrage en cours ou réseau coupé")
+        }
+    }
+
+    private fun showOffline(reason: String) {
+        offlineDetail.text = "$reason\nLe tableau de bord reviendra tout seul dès que Home Assistant répondra."
+        if (offlineScreen.visibility != View.VISIBLE) {
+            offlineScreen.visibility = View.VISIBLE
+            handler.removeCallbacks(healthCheck)
+            handler.postDelayed(healthCheck, 5_000)
+        }
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -277,6 +388,7 @@ class MainActivity : Activity(), DashboardController {
 
     override fun onPause() {
         handler.removeCallbacks(screensaverCheck)
+        handler.removeCallbacks(healthCheck)
         screensaver.visibility = View.GONE
         AppState.dashboardVisible = false
         setDockVisible(false)
@@ -305,6 +417,7 @@ class MainActivity : Activity(), DashboardController {
     }
 
     override fun reloadDashboard() {
+        offlineScreen.visibility = View.GONE
         web.reload()
     }
 
@@ -341,6 +454,7 @@ class MainActivity : Activity(), DashboardController {
     override fun onDestroy() {
         if (AppState.controller === this) AppState.controller = null
         handler.removeCallbacks(autoHideDock)
+        healthExecutor.shutdownNow()
         web.destroy()
         super.onDestroy()
     }

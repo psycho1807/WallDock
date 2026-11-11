@@ -11,30 +11,33 @@ android {
         applicationId = "app.walldock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.4.0"
+        versionCode = 10
+        versionName = "0.5.0"
     }
 
     buildFeatures {
         buildConfig = true
     }
 
-    // Clé de test fixe : chaque APK compilé par GitHub peut s'installer par-dessus le précédent
+    // Clé officielle : déchiffrée par GitHub Actions (secret WALLDOCK_KEY_PASSWORD), jamais en clair dans le dépôt
+    val releaseStore = System.getenv("WALLDOCK_KEYSTORE")
+    val releasePassword = System.getenv("WALLDOCK_KEY_PASSWORD")
     signingConfigs {
-        getByName("debug") {
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        if (releaseStore != null && releasePassword != null) {
+            create("release") {
+                storeFile = file(releaseStore)
+                storeType = "PKCS12"
+                storePassword = releasePassword
+                keyAlias = "walldock"
+                keyPassword = releasePassword
+            }
         }
     }
 
     buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
-        }
         release {
             isMinifyEnabled = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 

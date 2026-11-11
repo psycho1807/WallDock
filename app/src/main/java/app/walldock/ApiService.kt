@@ -61,9 +61,34 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val alertShown = Entity(Entity.Kind.BINARY_SENSOR, "alerte_affichee", "Alerte affichée")
         .icon("mdi:alert-octagon")
 
+    private val updateStatus = Entity(Entity.Kind.TEXT_SENSOR, "mise_a_jour", "Mise à jour")
+        .icon("mdi:update").category(Entity.CATEGORY_DIAGNOSTIC)
+    private val installUpdate = Entity(Entity.Kind.BUTTON, "installer_mise_a_jour", "Installer la mise à jour")
+        .icon("mdi:download").category(Entity.CATEGORY_CONFIG)
+
     private val entities = listOf(
-        battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload
+        battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
+        updateStatus, installUpdate
     )
+
+    private val updateListener: (String) -> Unit = { server?.setState(updateStatus, it) }
+
+    /** Vérification des mises à jour : 1 min après le démarrage, puis toutes les 12 h. */
+    private val updateCheck = object : Runnable {
+        override fun run() {
+            main.removeCallbacks(this)
+            if (!Prefs(this@ApiService).autoUpdate) {
+                Updater.check(this@ApiService, install = false)
+                main.postDelayed(this, UPDATE_INTERVAL_MS)
+            } else if (!AppState.dashboardVisible || alertOverlay.isShowing) {
+                // Pas d'installation par-dessus une appli ouverte ou une alerte : on réessaie plus tard
+                main.postDelayed(this, UPDATE_RETRY_MS)
+            } else {
+                Updater.check(this@ApiService, install = true)
+                main.postDelayed(this, UPDATE_INTERVAL_MS)
+            }
+        }
+    }
 
     // Actions appelables depuis HA : esphome.<appareil>_parler, _ouvrir_page, _ouvrir_appli
     private val speakService = UserService("parler").arg("message", UserService.ARG_STRING)
@@ -123,6 +148,9 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(currentApp, AppState.currentApp)
         srv.setState(openSelect, DASHBOARD_OPTION)
         srv.setState(alertShown, false)
+        srv.setState(updateStatus, Updater.status)
+        Updater.addListener(updateListener)
+        main.postDelayed(updateCheck, 60_000)
         alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
 
         tts = TextToSpeech(this) { status ->
@@ -155,6 +183,8 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onDestroy() {
         instance = null
+        main.removeCallbacks(updateCheck)
+        Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
         tts?.shutdown()
         tts = null
@@ -228,6 +258,7 @@ class ApiService : Service(), EsphomeServer.Handler {
             when {
                 entity === backToDashboard -> showDashboard(home = true)
                 entity === reload -> AppState.controller?.reloadDashboard()
+                entity === installUpdate -> Updater.check(this, install = true)
             }
         }
     }
@@ -435,6 +466,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         const val DASHBOARD_OPTION = "Tableau de bord"
         private const val CHANNEL_ID = "walldock_api"
         private const val NOTIFICATION_ID = 2
+        private const val UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000L
+        private const val UPDATE_RETRY_MS = 30 * 60 * 1000L
 
         @Volatile
         var instance: ApiService? = null

@@ -35,6 +35,9 @@ class SettingsActivity : Activity() {
     private lateinit var haStatusText: TextView
     private lateinit var saverCheck: CheckBox
     private lateinit var saverField: EditText
+    private lateinit var updateCheck: CheckBox
+    private lateinit var updateText: TextView
+    private val updateListener: (String) -> Unit = { updateText.text = updateLine(it) }
 
     private val dockSelection = mutableListOf<String>()
     private val videoSelection = mutableSetOf<String>()
@@ -119,6 +122,22 @@ class SettingsActivity : Activity() {
         haStatusText.setLineSpacing(0f, 1.3f)
         column.addView(haStatusText)
 
+        column.addView(heading("Mises à jour", 18f))
+        updateText = TextView(this)
+        updateText.setTextColor(0xFFB0C4E0.toInt())
+        updateText.textSize = 14f
+        updateText.setLineSpacing(0f, 1.3f)
+        column.addView(updateText)
+        updateCheck = CheckBox(this)
+        updateCheck.text = "Installer automatiquement les nouvelles versions"
+        updateCheck.setTextColor(Color.WHITE)
+        updateCheck.isChecked = prefs.autoUpdate
+        column.addView(updateCheck)
+        column.addView(button("Autoriser l’installation des mises à jour") {
+            open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+        })
+        column.addView(button("Vérifier et installer maintenant") { Updater.check(this, install = true) })
+
         column.addView(heading("Applis du dock", 18f))
         column.addView(label("« Dock » : l’appli apparaît dans le dock. « Vidéo » : pas de retour automatique tant qu’elle est ouverte."))
         for (app in Apps.listLaunchable(this)) column.addView(appRow(app))
@@ -135,6 +154,20 @@ class SettingsActivity : Activity() {
         super.onResume()
         updateStatus()
         updateHaStatus()
+        updateText.text = updateLine(Updater.status)
+        Updater.addListener(updateListener)
+    }
+
+    override fun onPause() {
+        Updater.removeListener(updateListener)
+        super.onPause()
+    }
+
+    private fun updateLine(status: String): String {
+        val allowed = packageManager.canRequestPackageInstalls()
+        return "Version installée : ${BuildConfig.VERSION_NAME}\n" +
+            (if (allowed) "✅ Installation des mises à jour autorisée" else "⚠️ Installation des mises à jour non autorisée") +
+            "\n$status"
     }
 
     @Deprecated("Deprecated in Java")
@@ -163,6 +196,7 @@ class SettingsActivity : Activity() {
                 prefs.pin = pin
                 prefs.returnSeconds = delay
                 prefs.screensaverEnabled = saverCheck.isChecked
+                prefs.autoUpdate = updateCheck.isChecked
                 if (saverMinutes >= 1) prefs.screensaverMinutes = saverMinutes
                 prefs.dockApps = dockSelection.toList()
                 prefs.videoApps = videoSelection.toSet()

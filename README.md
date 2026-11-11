@@ -14,8 +14,9 @@ Appli Android de kiosque pour tablette murale Home Assistant : le tableau de bor
 
 ## Installation sur la tablette
 
-1. Télécharger l'APK depuis l'onglet **Actions** du dépôt (dernier build réussi → artefact `WallDock-debug-apk`), le décompresser et copier le fichier `.apk` sur la tablette.
+1. Sur la tablette, ouvrir https://github.com/psycho1807/WallDock/releases/latest et télécharger `WallDock-x.y.z.apk`.
 2. L'installer (autoriser l'installation d'applis de sources inconnues si Android le demande).
+3. Les versions suivantes s'installent ensuite toutes seules (réglage « Mises à jour » ; la toute première peut demander une confirmation à l'écran).
 3. Au premier lancement, renseigner l'adresse de Home Assistant, un code administrateur et le délai, cocher les applis du dock, puis **Enregistrer**.
 4. Dans **Réglages → Autorisations** :
    - **Définir WallDock comme écran d'accueil** (indispensable pour le mode kiosque) ;
@@ -25,7 +26,7 @@ Appli Android de kiosque pour tablette murale Home Assistant : le tableau de bor
 
 ## Compilation
 
-Chaque push sur `main` compile l'APK avec GitHub Actions (`.github/workflows/build.yml`). En local : Android Studio, ou `gradle assembleDebug` avec Gradle 8.10 et le SDK Android 35.
+Chaque push sur `main` compile l'APK signé avec GitHub Actions (`.github/workflows/build.yml`) ; quand `versionName` change, une release GitHub est publiée et les tablettes la récupèrent. La clé de signature est stockée chiffrée (`app/release.jks.enc`), son mot de passe est le secret `WALLDOCK_KEY_PASSWORD`. En local : Android Studio, ou `gradle assembleDebug` avec Gradle 8.10 et le SDK Android 35.
 
 ## Prochaines étapes
 
