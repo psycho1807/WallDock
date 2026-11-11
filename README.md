@@ -1,35 +1,71 @@
 # WallDock
 
-Appli Android de kiosque pour tablette murale Home Assistant : le tableau de bord en plein écran, un dock d'applis autorisées (Spotify, YouTube, caméras…) et un retour automatique au tableau de bord après inactivité.
+**Appli Android de kiosque pour tablette murale Home Assistant, avec l'assistant vocal Jarvis intégré.**
+*Android wall-panel kiosk for Home Assistant, with a built-in voice assistant — [English below](#english).*
 
-> Prototype (v0.1). Licence GPL v3.
+Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/releases/latest) · [Soutenir le projet](#soutenir-le-projet)
 
-## Ce que fait le prototype
+---
 
-- Tableau de bord Home Assistant en plein écran, écran toujours allumé, barres système masquées.
-- Dock ouvert par la poignée ▲ en bas à droite : applis choisies, bouton Recharger, bouton Réglages.
-- Retour automatique au tableau de bord après le délai choisi (120 s par défaut). Les applis cochées « Vidéo » n'ont pas de retour automatique.
-- Réglages protégés par un code administrateur.
-- Peut devenir l'écran d'accueil de la tablette : le bouton Accueil ramène alors toujours au tableau de bord.
+## Ce que fait WallDock
 
-## Installation sur la tablette
+**Kiosque**
+- Tableau de bord Home Assistant en plein écran, barres système masquées, écran toujours allumé.
+- Dock d'applis autorisées (Spotify, YouTube, caméras…) ouvert par une poignée (position réglable ou cachée).
+- Retour automatique au tableau de bord après inactivité ; les applis « Vidéo » en sont exclues.
+- Réglages protégés par un code ; WallDock peut devenir l'écran d'accueil de la tablette.
+- Écran de veille horloge, écran de secours quand Home Assistant ne répond pas.
+- Mises à jour automatiques depuis les releases GitHub (désactivables).
 
-1. Sur la tablette, ouvrir https://github.com/psycho1807/WallDock/releases/latest et télécharger `WallDock-x.y.z.apk`.
-2. L'installer (autoriser l'installation d'applis de sources inconnues si Android le demande).
-3. Les versions suivantes s'installent ensuite toutes seules (réglage « Mises à jour » ; la toute première peut demander une confirmation à l'écran).
-3. Au premier lancement, renseigner l'adresse de Home Assistant, un code administrateur et le délai, cocher les applis du dock, puis **Enregistrer**.
-4. Dans **Réglages → Autorisations** :
-   - **Définir WallDock comme écran d'accueil** (indispensable pour le mode kiosque) ;
-   - **Autoriser l'affichage par-dessus les autres applis** (permet le retour automatique) ;
-   - **Activer la détection d'activité** (facultatif : le délai repart à chaque geste au lieu d'être compté depuis l'ouverture de l'appli).
-5. Sur les tablettes Honor/Huawei : désactiver l'optimisation de batterie pour WallDock, sinon Android peut couper le retour automatique.
+**Intégration Home Assistant** (API native ESPHome, découverte automatique)
+- Capteurs : batterie, en charge, appli ouverte, alerte affichée, mise à jour, état de Jarvis.
+- Commandes : écran, luminosité, volume, ouvrir une appli ou une page, revenir au tableau de bord, recharger.
+- Actions : `parler`, `jouer_son`, `ouvrir_page`, `ouvrir_appli`, `afficher_alerte` (popup plein écran avec compte à rebours), `fermer_alerte`.
+
+**Jarvis, assistant vocal** (satellite Assist)
+- « Hey Jarvis » reconnu sur la tablette (modèles openWakeWord) ou par Home Assistant.
+- Visage animé plein écran avec la question et la réponse, conversation qui s'enchaîne.
+- Annonces (`assist_satellite.announce`), minuteurs vocaux avec compte à rebours et sonnerie.
+
+## Installation
+
+1. Sur la tablette, ouvrir la [dernière version](https://github.com/psycho1807/WallDock/releases/latest) et installer `WallDock-x.y.z.apk`.
+2. Au premier lancement : adresse du tableau de bord (ex. `http://192.168.1.10:8123/lovelace/0?kiosk`), code administrateur, applis du dock, puis **Enregistrer**.
+3. Dans les réglages, donner les autorisations : écran d'accueil, affichage par-dessus les autres applis, micro (pour Jarvis), installation des mises à jour.
+4. Home Assistant propose ensuite « WallDock … » dans **Paramètres → Appareils et services** : l'accepter.
+5. Pour Jarvis : un pipeline Assist avec STT/TTS ; pour la détection par HA, l'appli openWakeWord.
+
+Tablettes Honor/Huawei : désactiver l'optimisation de batterie pour WallDock.
+
+## Soutenir le projet
+
+WallDock est gratuit et libre. Si l'appli vous rend service, un petit don aide à la faire avancer :
+
+- Liens de dons (Ko-fi et PayPal) : bientôt disponibles.
 
 ## Compilation
 
-Chaque push sur `main` compile l'APK signé avec GitHub Actions (`.github/workflows/build.yml`) ; quand `versionName` change, une release GitHub est publiée et les tablettes la récupèrent. La clé de signature est stockée chiffrée (`app/release.jks.enc`), son mot de passe est le secret `WALLDOCK_KEY_PASSWORD`. En local : Android Studio, ou `gradle assembleDebug` avec Gradle 8.10 et le SDK Android 35.
+Chaque push sur `main` compile l'APK signé avec GitHub Actions ; quand `versionName` change, une release est publiée. En local : Android Studio, ou `gradle assembleRelease` avec Gradle 8.10 et le SDK Android 35 (sans la clé officielle, l'APK n'est pas signé).
 
-## Prochaines étapes
+Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et se teste sur une JVM avec le client Python `aioesphomeapi`.
 
-- Capteurs et commandes dans Home Assistant via l'API ESPHome (batterie, écran, appli au premier plan, retour au tableau de bord).
-- Veille avec horloge, profils adulte / enfant / invité.
-- Satellite vocal Assist.
+## Crédits
+
+- Détection du mot d'activation : modèles [openWakeWord](https://github.com/dscripka/openWakeWord) (téléchargés au premier usage, licence CC BY-NC-SA 4.0), exécutés avec TensorFlow Lite.
+- Protocole : [API native ESPHome](https://esphome.io/components/api.html).
+
+---
+
+## English
+
+**WallDock** turns an Android tablet into a Home Assistant wall panel:
+
+- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, clock screensaver, offline fallback screen, automatic updates from GitHub releases.
+- Native ESPHome API integration (auto-discovered): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
+- **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements and voice timers.
+
+Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest). The app UI is currently in French.
+
+Donation links (Ko-fi, PayPal): coming soon.
+
+License: GPL-3.0.
