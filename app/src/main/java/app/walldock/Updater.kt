@@ -27,7 +27,7 @@ object Updater {
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile
-    var status = "Pas encore vérifié"
+    var status = tr(R.string.upd_not_checked)
         private set
 
     /** Prévenu (sur le fil principal) à chaque changement d'état. */
@@ -53,7 +53,7 @@ object Updater {
             try {
                 run(app, install)
             } catch (e: Exception) {
-                setStatus("Échec : ${e.message ?: e.javaClass.simpleName}")
+                setStatus(tr(R.string.upd_failed, e.message ?: e.javaClass.simpleName))
             } finally {
                 busy = false
             }
@@ -61,7 +61,7 @@ object Updater {
     }
 
     private fun run(context: Context, install: Boolean) {
-        setStatus("Vérification…")
+        setStatus(tr(R.string.upd_checking))
         val release = JSONObject(httpGet(LATEST_RELEASE))
         val latest = release.optString("tag_name").removePrefix("v")
         val assets = release.optJSONArray("assets")
@@ -74,21 +74,21 @@ object Updater {
         }
         val current = BuildConfig.VERSION_NAME
         if (latest.isBlank() || apkUrl == null || compareVersions(latest, current) <= 0) {
-            setStatus("À jour ($current)")
+            setStatus(tr(R.string.upd_up_to_date, current))
             return
         }
         if (!install) {
-            setStatus("Version $latest disponible")
+            setStatus(tr(R.string.upd_available, latest))
             return
         }
         if (!context.packageManager.canRequestPackageInstalls()) {
-            setStatus("Version $latest disponible : autorise l’installation des mises à jour dans les réglages")
+            setStatus(tr(R.string.upd_available_allow, latest))
             return
         }
-        setStatus("Téléchargement de la version $latest…")
+        setStatus(tr(R.string.upd_downloading, latest))
         val file = File(context.cacheDir, "walldock-update.apk")
         download(apkUrl, file)
-        setStatus("Installation de la version $latest…")
+        setStatus(tr(R.string.upd_installing, latest))
         installApk(context, file)
     }
 
@@ -117,8 +117,8 @@ object Updater {
         val connection = open(address)
         connection.setRequestProperty("Accept", "application/vnd.github+json")
         try {
-            if (connection.responseCode == 404) throw IllegalStateException("aucune version publiée")
-            if (connection.responseCode != 200) throw IllegalStateException("GitHub a répondu ${connection.responseCode}")
+            if (connection.responseCode == 404) throw IllegalStateException(tr(R.string.upd_no_release))
+            if (connection.responseCode != 200) throw IllegalStateException(tr(R.string.upd_github_code, connection.responseCode))
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
             connection.disconnect()
@@ -128,7 +128,7 @@ object Updater {
     private fun download(address: String, target: File) {
         val connection = open(address)
         try {
-            if (connection.responseCode != 200) throw IllegalStateException("téléchargement refusé (${connection.responseCode})")
+            if (connection.responseCode != 200) throw IllegalStateException(tr(R.string.upd_download_refused, connection.responseCode))
             connection.inputStream.use { input -> target.outputStream().use { input.copyTo(it) } }
         } finally {
             connection.disconnect()
@@ -179,16 +179,16 @@ class UpdateReceiver : BroadcastReceiver() {
                             confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             try {
                                 context.startActivity(confirm)
-                                Updater.setStatus("Confirme l’installation sur l’écran de la tablette")
+                                Updater.setStatus(tr(R.string.upd_confirm))
                             } catch (e: Exception) {
-                                Updater.setStatus("Impossible d’afficher la confirmation d’installation")
+                                Updater.setStatus(tr(R.string.upd_confirm_failed))
                             }
                         }
                     }
-                    PackageInstaller.STATUS_SUCCESS -> Updater.setStatus("Mise à jour installée")
+                    PackageInstaller.STATUS_SUCCESS -> Updater.setStatus(tr(R.string.upd_installed))
                     else -> {
-                        val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "erreur inconnue"
-                        Updater.setStatus("Échec de l’installation : $message")
+                        val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: tr(R.string.unknown_error)
+                        Updater.setStatus(tr(R.string.upd_install_failed, message))
                     }
                 }
             }

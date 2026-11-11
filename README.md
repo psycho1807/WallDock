@@ -64,7 +64,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 - Native ESPHome API integration (auto-discovered): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements and voice timers.
 
-Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest). The app UI is currently in French.
+Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest). The app UI is available in English and French (it follows the tablet language).
 
 Support the project: [Ko-fi](https://ko-fi.com/psycho1807)
 

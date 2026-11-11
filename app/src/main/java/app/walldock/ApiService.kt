@@ -46,43 +46,43 @@ class ApiService : Service(), EsphomeServer.Handler {
     lateinit var friendlyName: String
         private set
 
-    private val battery = Entity(Entity.Kind.SENSOR, "batterie", "Batterie")
+    private val battery = Entity(Entity.Kind.SENSOR, "batterie", tr(R.string.entity_batterie))
         .unit("%").deviceClass("battery").measurement().category(Entity.CATEGORY_DIAGNOSTIC)
-    private val charging = Entity(Entity.Kind.BINARY_SENSOR, "en_charge", "En charge")
+    private val charging = Entity(Entity.Kind.BINARY_SENSOR, "en_charge", tr(R.string.entity_en_charge))
         .deviceClass("battery_charging").category(Entity.CATEGORY_DIAGNOSTIC)
-    private val screen = Entity(Entity.Kind.SWITCH, "ecran", "Écran").icon("mdi:tablet-dashboard")
-    private val brightness = Entity(Entity.Kind.NUMBER, "luminosite", "Luminosité")
+    private val screen = Entity(Entity.Kind.SWITCH, "ecran", tr(R.string.entity_ecran)).icon("mdi:tablet-dashboard")
+    private val brightness = Entity(Entity.Kind.NUMBER, "luminosite", tr(R.string.entity_luminosite))
         .unit("%").range(1f, 100f, 1f).icon("mdi:brightness-6")
-    private val currentApp = Entity(Entity.Kind.TEXT_SENSOR, "appli_ouverte", "Appli ouverte").icon("mdi:application")
-    private val backToDashboard = Entity(Entity.Kind.BUTTON, "retour_tableau_de_bord", "Revenir au tableau de bord")
+    private val currentApp = Entity(Entity.Kind.TEXT_SENSOR, "appli_ouverte", tr(R.string.entity_appli_ouverte)).icon("mdi:application")
+    private val backToDashboard = Entity(Entity.Kind.BUTTON, "retour_tableau_de_bord", tr(R.string.entity_retour_tableau_de_bord))
         .icon("mdi:view-dashboard")
-    private val reload = Entity(Entity.Kind.BUTTON, "recharger", "Recharger le tableau de bord")
+    private val reload = Entity(Entity.Kind.BUTTON, "recharger", tr(R.string.entity_recharger))
         .icon("mdi:refresh").category(Entity.CATEGORY_CONFIG)
 
-    private val openSelect = Entity(Entity.Kind.SELECT, "ouvrir", "Ouvrir").icon("mdi:apps")
-    private val alertShown = Entity(Entity.Kind.BINARY_SENSOR, "alerte_affichee", "Alerte affichée")
+    private val openSelect = Entity(Entity.Kind.SELECT, "ouvrir", tr(R.string.entity_ouvrir)).icon("mdi:apps")
+    private val alertShown = Entity(Entity.Kind.BINARY_SENSOR, "alerte_affichee", tr(R.string.entity_alerte_affichee))
         .icon("mdi:alert-octagon")
 
-    private val updateStatus = Entity(Entity.Kind.TEXT_SENSOR, "mise_a_jour", "Mise à jour")
+    private val updateStatus = Entity(Entity.Kind.TEXT_SENSOR, "mise_a_jour", tr(R.string.entity_mise_a_jour))
         .icon("mdi:update").category(Entity.CATEGORY_DIAGNOSTIC)
-    private val installUpdate = Entity(Entity.Kind.BUTTON, "installer_mise_a_jour", "Installer la mise à jour")
+    private val installUpdate = Entity(Entity.Kind.BUTTON, "installer_mise_a_jour", tr(R.string.entity_installer_mise_a_jour))
         .icon("mdi:download").category(Entity.CATEGORY_CONFIG)
 
     private val jarvisState = Entity(Entity.Kind.TEXT_SENSOR, "jarvis", "Jarvis").icon("mdi:account-voice")
-    private val talkToJarvis = Entity(Entity.Kind.BUTTON, "parler_a_jarvis", "Parler à Jarvis").icon("mdi:microphone")
+    private val talkToJarvis = Entity(Entity.Kind.BUTTON, "parler_a_jarvis", tr(R.string.entity_parler_a_jarvis)).icon("mdi:microphone")
 
-    private val micLevel = Entity(Entity.Kind.SENSOR, "niveau_micro", "Niveau du micro")
+    private val micLevel = Entity(Entity.Kind.SENSOR, "niveau_micro", tr(R.string.entity_niveau_micro))
         .unit("%").measurement().icon("mdi:microphone-outline").category(Entity.CATEGORY_DIAGNOSTIC)
-    private val audioSent = Entity(Entity.Kind.SENSOR, "son_envoye", "Son envoyé à HA")
+    private val audioSent = Entity(Entity.Kind.SENSOR, "son_envoye", tr(R.string.entity_son_envoye))
         .unit("s").icon("mdi:upload-network").category(Entity.CATEGORY_DIAGNOSTIC)
 
     private val volume = Entity(Entity.Kind.NUMBER, "volume", "Volume")
         .unit("%").range(0f, 100f, 1f).icon("mdi:volume-high")
-    private val stopRinging = Entity(Entity.Kind.BUTTON, "arreter_la_sonnerie", "Arrêter la sonnerie")
+    private val stopRinging = Entity(Entity.Kind.BUTTON, "arreter_la_sonnerie", tr(R.string.entity_arreter_la_sonnerie))
         .icon("mdi:alarm-off")
-    private val detectionMode = Entity(Entity.Kind.TEXT_SENSOR, "detection_hey_jarvis", "Détection Hey Jarvis")
+    private val detectionMode = Entity(Entity.Kind.TEXT_SENSOR, "detection_hey_jarvis", tr(R.string.entity_detection_hey_jarvis))
         .icon("mdi:ear-hearing").category(Entity.CATEGORY_DIAGNOSTIC)
-    private val wakeScore = Entity(Entity.Kind.SENSOR, "score_hey_jarvis", "Score Hey Jarvis")
+    private val wakeScore = Entity(Entity.Kind.SENSOR, "score_hey_jarvis", tr(R.string.entity_score_hey_jarvis))
         .unit("%").measurement().icon("mdi:waveform").category(Entity.CATEGORY_DIAGNOSTIC)
 
     private val entities = listOf(
@@ -222,7 +222,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 srv.start()
                 main.post { registerMdns(mac) }
             } catch (e: Exception) {
-                AppState.apiError = "Port ${EsphomeServer.DEFAULT_PORT} déjà utilisé (une autre appli, comme Kiosk Satellite ?)"
+                AppState.apiError = tr(R.string.port_in_use, EsphomeServer.DEFAULT_PORT)
             }
         }.start()
 
@@ -378,7 +378,7 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     private fun showAlert(title: String, message: String, seconds: Int) {
         if (!AppState.screenOn) setScreen(true) else wakeUp()
-        val shown = alertOverlay.show(title.ifBlank { "Alerte" }, message, seconds)
+        val shown = alertOverlay.show(title.ifBlank { tr(R.string.alert_default_title) }, message, seconds)
         server?.setState(alertShown, shown)
         // Sans l'autorisation « affichage par-dessus », on se rabat sur la voix
         if (!shown) speak(listOf(title, message).filter { it.isNotBlank() }.joinToString(". "))
@@ -571,7 +571,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_walldock)
             .setContentTitle("WallDock")
-            .setContentText("Disponible pour Home Assistant")
+            .setContentText(tr(R.string.notif_available))
             .setOngoing(true)
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -597,17 +597,17 @@ class ApiService : Service(), EsphomeServer.Handler {
     }
 
     companion object {
-        const val DASHBOARD_OPTION = "Tableau de bord"
+        val DASHBOARD_OPTION: String get() = tr(R.string.dashboard)
         private const val CHANNEL_ID = "walldock_api"
         private const val NOTIFICATION_ID = 2
         private const val UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000L
         private const val UPDATE_RETRY_MS = 30 * 60 * 1000L
-        private val JARVIS_LABELS = mapOf(
-            Jarvis.State.OFF to "Inactif",
-            Jarvis.State.WAITING to "En veille",
-            Jarvis.State.LISTENING to "Écoute",
-            Jarvis.State.THINKING to "Réfléchit",
-            Jarvis.State.SPEAKING to "Parle"
+        private val JARVIS_LABELS get() = mapOf(
+            Jarvis.State.OFF to tr(R.string.jarvis_state_off),
+            Jarvis.State.WAITING to tr(R.string.jarvis_state_waiting),
+            Jarvis.State.LISTENING to tr(R.string.jarvis_state_listening),
+            Jarvis.State.THINKING to tr(R.string.jarvis_state_thinking),
+            Jarvis.State.SPEAKING to tr(R.string.jarvis_state_speaking)
         )
 
         @Volatile

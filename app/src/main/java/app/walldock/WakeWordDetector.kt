@@ -143,7 +143,7 @@ class WakeWordDetector private constructor(dir: File) {
                     connection.setRequestProperty("User-Agent", "WallDock/${BuildConfig.VERSION_NAME}")
                     try {
                         if (connection.responseCode != 200) {
-                            lastError = "Téléchargement de $name : HTTP ${connection.responseCode}"
+                            lastError = tr(R.string.ww_download_http, name, connection.responseCode)
                             return false
                         }
                         connection.inputStream.use { input -> temp.outputStream().use { input.copyTo(it) } }
@@ -151,12 +151,12 @@ class WakeWordDetector private constructor(dir: File) {
                         connection.disconnect()
                     }
                     if (!temp.renameTo(target)) {
-                        lastError = "Impossible d'enregistrer $name"
+                        lastError = tr(R.string.ww_save_failed, name)
                         return false
                     }
                 } catch (e: Exception) {
                     temp.delete()
-                    lastError = "Téléchargement de $name : ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
+                    lastError = tr(R.string.ww_download_error, name, "${e.javaClass.simpleName} ${e.message ?: ""}".trim())
                     return false
                 }
             }
@@ -209,7 +209,7 @@ class WakeWordDetector private constructor(dir: File) {
         fun load(context: Context): WakeWordDetector? {
             if (!modelsPresent(context)) return null
             if (crashedBefore(context)) {
-                lastError = "le moteur a planté sur cette tablette"
+                lastError = tr(R.string.ww_crashed)
                 return null
             }
             val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -223,7 +223,7 @@ class WakeWordDetector private constructor(dir: File) {
                 detector.reset()
                 detector
             } catch (e: Throwable) {
-                lastError = "Chargement des modèles : ${e.javaClass.simpleName} ${e.message ?: ""}".trim().take(200)
+                lastError = tr(R.string.ww_load_error, "${e.javaClass.simpleName} ${e.message ?: ""}".trim()).take(200)
                 null
             } finally {
                 sp.edit().putBoolean(KEY_IN_PROGRESS, false).commit()

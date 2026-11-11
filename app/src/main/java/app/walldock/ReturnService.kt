@@ -140,10 +140,10 @@ class ReturnService : Service() {
 
     private fun startInForeground(seconds: Int) {
         getSystemService(NotificationManager::class.java)?.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Retour automatique", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL_ID, tr(R.string.channel_return), NotificationManager.IMPORTANCE_LOW)
         )
-        val text = if (seconds > 0) "Retour au tableau de bord après $seconds s d’inactivité"
-        else "Touchez ⌂ pour revenir au tableau de bord"
+        val text = if (seconds > 0) tr(R.string.return_after, seconds)
+        else tr(R.string.return_tap)
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_walldock)
             .setContentTitle("WallDock")

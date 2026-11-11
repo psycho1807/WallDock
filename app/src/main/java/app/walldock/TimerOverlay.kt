@@ -122,7 +122,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
                 timer.secondsLeft
             }
             val chip = TextView(context)
-            chip.text = "⏱  ${timer.name}   ${formatTime(left)}" + if (timer.active) "" else "  (pause)"
+            chip.text = "⏱  ${timer.name}   ${formatTime(left)}" + if (timer.active) "" else "  " + tr(R.string.timer_paused)
             chip.setTextColor(Color.WHITE)
             chip.textSize = 18f
             chip.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
@@ -187,7 +187,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         icon.gravity = Gravity.CENTER
         column.addView(icon)
         val title = TextView(context)
-        title.text = "MINUTEUR TERMINÉ"
+        title.text = tr(R.string.timer_finished)
         title.textSize = 26f
         title.letterSpacing = 0.2f
         title.setTextColor(0xFFFFB347.toInt())
@@ -201,7 +201,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         names.gravity = Gravity.CENTER
         column.addView(names)
         val stop = Button(context)
-        stop.text = "Arrêter"
+        stop.text = tr(R.string.timer_stop)
         stop.isAllCaps = false
         stop.textSize = 20f
         stop.setOnClickListener { stopRinging() }

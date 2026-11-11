@@ -93,7 +93,7 @@ class MainActivity : Activity(), DashboardController {
         web.webViewClient = object : WebViewClient() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 // Seule la page principale compte (pas une image ou un script)
-                if (request.isForMainFrame) showOffline("La page n’a pas pu se charger (${error.description})")
+                if (request.isForMainFrame) showOffline(tr(R.string.page_failed, error.description.toString()))
             }
         }
         CookieManager.getInstance().setAcceptCookie(true)
@@ -115,7 +115,7 @@ class MainActivity : Activity(), DashboardController {
         offlineClock.setTextColor(0xFFDBE9FF.toInt())
         offlineColumn.addView(offlineClock)
         val offlineTitle = TextView(this)
-        offlineTitle.text = "Home Assistant ne répond pas"
+        offlineTitle.text = tr(R.string.offline_title)
         offlineTitle.textSize = 24f
         offlineTitle.setTextColor(0xFFFFB347.toInt())
         offlineTitle.gravity = Gravity.CENTER
@@ -127,13 +127,13 @@ class MainActivity : Activity(), DashboardController {
         offlineDetail.gravity = Gravity.CENTER
         offlineColumn.addView(offlineDetail)
         val retry = TextView(this)
-        retry.text = "Réessayer maintenant"
+        retry.text = tr(R.string.offline_retry)
         retry.textSize = 16f
         retry.setTextColor(0xFF3FD4FF.toInt())
         retry.setPadding(dp(20), dp(12), dp(20), dp(12))
         retry.background = panelBackground(0x330A1634, 18)
         retry.setOnClickListener {
-            offlineDetail.text = "Nouvel essai…"
+            offlineDetail.text = tr(R.string.offline_retrying)
             checkHomeAssistant()
         }
         val retryParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
@@ -197,8 +197,7 @@ class MainActivity : Activity(), DashboardController {
 
         // Bandeau d'alerte si l'autorisation « affichage par-dessus » manque
         overlayWarning = TextView(this)
-        overlayWarning.text = "⚠️ Autorisation « affichage par-dessus les autres applis » manquante : " +
-            "le retour automatique ne fonctionnera pas. Touchez ici pour la donner."
+        overlayWarning.text = tr(R.string.overlay_warning)
         overlayWarning.setTextColor(Color.WHITE)
         overlayWarning.textSize = 14f
         overlayWarning.setPadding(dp(16), dp(10), dp(16), dp(10))
@@ -237,8 +236,8 @@ class MainActivity : Activity(), DashboardController {
         clock.setShadowLayer(dp(18).toFloat(), 0f, 0f, 0x993FD4FF.toInt())
         clockColumn.addView(clock)
         val date = TextClock(this)
-        date.format24Hour = "EEEE d MMMM"
-        date.format12Hour = "EEEE d MMMM"
+        date.format24Hour = tr(R.string.date_format)
+        date.format12Hour = tr(R.string.date_format)
         date.textSize = 24f
         date.setTextColor(0xFF7F9BC4.toInt())
         clockColumn.addView(date)
@@ -254,7 +253,7 @@ class MainActivity : Activity(), DashboardController {
         super.onResume()
         AppState.dashboardVisible = true
         AppState.controller = this
-        AppState.currentApp = "Tableau de bord"
+        AppState.currentApp = tr(R.string.dashboard)
         ApiService.instance?.reportCurrentApp()
         stopService(Intent(this, ReturnService::class.java))
         enterImmersive()
@@ -332,12 +331,12 @@ class MainActivity : Activity(), DashboardController {
         } else {
             failedChecks++
             // Deux échecs d'affilée pour ne pas clignoter sur une coupure d'une seconde
-            if (failedChecks >= 2) showOffline("Redémarrage en cours ou réseau coupé")
+            if (failedChecks >= 2) showOffline(tr(R.string.offline_restarting))
         }
     }
 
     private fun showOffline(reason: String) {
-        offlineDetail.text = "$reason\nLe tableau de bord reviendra tout seul dès que Home Assistant répondra."
+        offlineDetail.text = reason + "\n" + tr(R.string.offline_detail)
         if (offlineScreen.visibility != View.VISIBLE) {
             offlineScreen.visibility = View.VISIBLE
             handler.removeCallbacks(healthCheck)
@@ -504,11 +503,11 @@ class MainActivity : Activity(), DashboardController {
             setDockVisible(false)
             ApiService.instance?.jarvis?.talk()
         })
-        dockRow.addView(dockItem("Recharger", glyph("⟳")) {
+        dockRow.addView(dockItem(tr(R.string.dock_reload), glyph("⟳")) {
             web.reload()
             setDockVisible(false)
         })
-        dockRow.addView(dockItem("Réglages", glyph("⚙")) {
+        dockRow.addView(dockItem(tr(R.string.dock_settings), glyph("⚙")) {
             setDockVisible(false)
             Pin.ask(this, prefs) { startActivity(Intent(this, SettingsActivity::class.java)) }
         })
@@ -517,7 +516,7 @@ class MainActivity : Activity(), DashboardController {
     private fun launchApp(packageName: String) {
         setDockVisible(false)
         if (!Apps.launch(this, packageName)) {
-            toast("Impossible d’ouvrir cette appli")
+            toast(tr(R.string.cannot_open_app))
             return
         }
         val seconds = if (packageName in prefs.videoApps) 0 else prefs.returnSeconds

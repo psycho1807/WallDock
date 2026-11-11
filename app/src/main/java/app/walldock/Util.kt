@@ -82,14 +82,14 @@ object Pin {
         }
         val input = EditText(activity)
         input.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-        input.hint = "Code administrateur"
+        input.hint = tr(R.string.pin_title)
         AlertDialog.Builder(activity)
-            .setTitle("Code administrateur")
+            .setTitle(tr(R.string.pin_title))
             .setView(input)
             .setPositiveButton("OK") { _, _ ->
-                if (input.text.toString() == prefs.pin) onSuccess() else activity.toast("Code incorrect")
+                if (input.text.toString() == prefs.pin) onSuccess() else activity.toast(tr(R.string.pin_wrong))
             }
-            .setNegativeButton("Annuler", null)
+            .setNegativeButton(tr(R.string.cancel), null)
             .show()
     }
 }

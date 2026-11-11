@@ -75,7 +75,7 @@ class AlertOverlay(private val context: Context, private val onDismissed: () -> 
             val timer = text(formatDuration(seconds), 56f, Color.WHITE, bold = true)
             timer.setPadding(0, context.dp(22), 0, 0)
             card.addView(timer)
-            val label = text("TEMPS RESTANT", 11f, 0xFFFFB347.toInt())
+            val label = text(tr(R.string.alert_time_left), 11f, 0xFFFFB347.toInt())
             label.letterSpacing = 0.3f
             card.addView(label)
             timerText = timer
@@ -83,7 +83,7 @@ class AlertOverlay(private val context: Context, private val onDismissed: () -> 
         }
 
         val ok = Button(context)
-        ok.text = "OK, j’ai vu"
+        ok.text = tr(R.string.alert_ok)
         ok.isAllCaps = false
         ok.textSize = 16f
         ok.setOnClickListener { close(notify = true) }

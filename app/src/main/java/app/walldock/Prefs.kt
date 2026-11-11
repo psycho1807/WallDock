@@ -118,7 +118,7 @@ object AppState {
 
     /** Nom de l'appli au premier plan, remonté à HA. */
     @Volatile
-    var currentApp = "Tableau de bord"
+    var currentApp = tr(R.string.dashboard)
 
     /** Message d'erreur du serveur Home Assistant, ou null si tout va bien. */
     @Volatile

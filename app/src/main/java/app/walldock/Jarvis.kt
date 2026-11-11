@@ -48,10 +48,10 @@ class Jarvis(
     /** Où est reconnu « Hey Jarvis » (affiché dans HA). */
     val detectionStatus: String
         get() = when {
-            !onDeviceEnabled -> "Home Assistant (choisi dans les réglages)"
-            detector != null -> "Tablette"
-            loadingDetector -> "Préparation des modèles…"
-            else -> "Home Assistant (" + (WakeWordDetector.lastError ?: "modèles absents") + ")"
+            !onDeviceEnabled -> tr(R.string.detect_ha_chosen)
+            detector != null -> tr(R.string.detect_tablet)
+            loadingDetector -> tr(R.string.detect_preparing)
+            else -> tr(R.string.detect_ha_reason, WakeWordDetector.lastError ?: tr(R.string.models_missing))
         }
 
     /** Meilleur score « Hey Jarvis » depuis la dernière lecture (diagnostic). */
@@ -119,11 +119,11 @@ class Jarvis(
     /** Parler à Jarvis sans dire « Hey Jarvis » (bouton du dock ou de HA). */
     fun talk() = main.post {
         if (!server.isVoiceSubscribed) {
-            context.toast("Jarvis n’est pas encore connecté à Home Assistant")
+            context.toast(tr(R.string.jarvis_not_connected))
             return@post
         }
         if (!micGranted) {
-            context.toast("Autorise le micro dans les réglages de WallDock")
+            context.toast(tr(R.string.jarvis_allow_mic))
             return@post
         }
         timers.stopRinging()
@@ -185,7 +185,7 @@ class Jarvis(
         if (!error) return
         main.post {
             streaming = false
-            if (state != State.WAITING) overlay.showError("Jarvis est indisponible")
+            if (state != State.WAITING) overlay.showError(tr(R.string.jarvis_unavailable))
             scheduleRestartAfterError()
         }
     }
@@ -311,9 +311,9 @@ class Jarvis(
                     if (code != "no_wake_word") scheduleRestartAfterError()
                 } else {
                     val message = when (code) {
-                        "stt-no-text-recognized", "stt-stream-failed" -> "Je n’ai pas compris"
-                        "stt-timeout" -> "Je n’ai rien entendu"
-                        else -> data["message"]?.takeIf { it.isNotBlank() } ?: "Une erreur est survenue"
+                        "stt-no-text-recognized", "stt-stream-failed" -> tr(R.string.jarvis_not_understood)
+                        "stt-timeout" -> tr(R.string.jarvis_heard_nothing)
+                        else -> data["message"]?.takeIf { it.isNotBlank() } ?: tr(R.string.jarvis_error)
                     }
                     overlay.showError(message)
                     continueConversation = false

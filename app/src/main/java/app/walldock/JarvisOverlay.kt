@@ -57,8 +57,8 @@ class JarvisOverlay(private val context: Context, private val onTouched: () -> U
         if (root == null && !create()) return
         orb.mode = mode
         status.text = when (mode) {
-            Mode.LISTENING -> "Je vous écoute…"
-            Mode.THINKING -> "Je réfléchis…"
+            Mode.LISTENING -> tr(R.string.jarvis_listening)
+            Mode.THINKING -> tr(R.string.jarvis_thinking)
             Mode.SPEAKING -> ""
             Mode.ERROR -> status.text
         }
@@ -70,7 +70,7 @@ class JarvisOverlay(private val context: Context, private val onTouched: () -> U
 
     fun setQuestion(text: String) {
         if (root == null) return
-        question.text = if (text.isBlank()) "" else "« ${text.trim()} »"
+        question.text = if (text.isBlank()) "" else tr(R.string.quoted, text.trim())
     }
 
     fun setAnswer(text: String) {

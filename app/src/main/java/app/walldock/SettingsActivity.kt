@@ -55,37 +55,37 @@ class SettingsActivity : Activity() {
         column.orientation = LinearLayout.VERTICAL
         column.setPadding(dp(24), dp(24), dp(24), dp(24))
 
-        column.addView(heading("WallDock — réglages", 22f))
+        column.addView(heading(tr(R.string.settings_title), 22f))
 
-        column.addView(label("Adresse de Home Assistant"))
+        column.addView(label(tr(R.string.settings_ha_address)))
         urlField = field(prefs.haUrl, "http://homeassistant.local:8123", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI)
         column.addView(urlField)
 
-        column.addView(label("Code administrateur (4 chiffres minimum)"))
+        column.addView(label(tr(R.string.settings_pin)))
         pinField = field(prefs.pin, "1234", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD)
         column.addView(pinField)
 
-        column.addView(label("Retour au tableau de bord après (secondes d’inactivité)"))
+        column.addView(label(tr(R.string.settings_return_delay)))
         delayField = field(prefs.returnSeconds.toString(), "120", InputType.TYPE_CLASS_NUMBER)
         column.addView(delayField)
 
-        column.addView(label("Écran de veille"))
+        column.addView(label(tr(R.string.settings_screensaver)))
         saverCheck = CheckBox(this)
-        saverCheck.text = "Afficher une horloge sur fond noir après une période sans toucher l’écran"
+        saverCheck.text = tr(R.string.settings_screensaver_check)
         saverCheck.setTextColor(Color.WHITE)
         saverCheck.isChecked = prefs.screensaverEnabled
         column.addView(saverCheck)
-        column.addView(label("Délai avant l’écran de veille (minutes)"))
+        column.addView(label(tr(R.string.settings_screensaver_delay)))
         saverField = field(prefs.screensaverMinutes.toString(), "5", InputType.TYPE_CLASS_NUMBER)
         column.addView(saverField)
 
-        column.addView(label("Poignée du dock"))
+        column.addView(label(tr(R.string.settings_handle)))
         handleGroup = RadioGroup(this)
         val handleChoices = listOf(
-            Prefs.HANDLE_BOTTOM_RIGHT to "En bas à droite",
-            Prefs.HANDLE_BOTTOM_LEFT to "En bas à gauche",
-            Prefs.HANDLE_RIGHT_MIDDLE to "Au milieu du bord droit",
-            Prefs.HANDLE_HIDDEN to "Cachée : glisser vers la gauche depuis le milieu du bord droit"
+            Prefs.HANDLE_BOTTOM_RIGHT to tr(R.string.handle_bottom_right),
+            Prefs.HANDLE_BOTTOM_LEFT to tr(R.string.handle_bottom_left),
+            Prefs.HANDLE_RIGHT_MIDDLE to tr(R.string.handle_right_middle),
+            Prefs.HANDLE_HIDDEN to tr(R.string.handle_hidden)
         )
         for ((value, text) in handleChoices) {
             val choice = RadioButton(this)
@@ -98,23 +98,23 @@ class SettingsActivity : Activity() {
         }
         column.addView(handleGroup)
 
-        column.addView(heading("Autorisations", 18f))
+        column.addView(heading(tr(R.string.settings_permissions), 18f))
         statusText = TextView(this)
         statusText.setTextColor(0xFFB0C4E0.toInt())
         statusText.textSize = 14f
         statusText.setLineSpacing(0f, 1.3f)
         column.addView(statusText)
-        column.addView(button("Définir WallDock comme écran d’accueil") {
+        column.addView(button(tr(R.string.settings_set_home)) {
             open(Intent(Settings.ACTION_HOME_SETTINGS))
         })
-        column.addView(button("Autoriser l’affichage par-dessus les autres applis") {
+        column.addView(button(tr(R.string.settings_allow_overlay)) {
             open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         })
-        column.addView(button("Activer la détection d’activité (accessibilité)") {
+        column.addView(button(tr(R.string.settings_enable_activity)) {
             open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         })
-        column.addView(button("Quitter le mode kiosque") {
-            toast("Choisis l’écran d’accueil habituel de la tablette")
+        column.addView(button(tr(R.string.settings_exit_kiosk)) {
+            toast(tr(R.string.settings_choose_home))
             open(Intent(Settings.ACTION_HOME_SETTINGS))
         })
 
@@ -132,45 +132,45 @@ class SettingsActivity : Activity() {
         jarvisText.setLineSpacing(0f, 1.3f)
         column.addView(jarvisText)
         jarvisCheck = CheckBox(this)
-        jarvisCheck.text = "Écouter « Hey Jarvis » en permanence"
+        jarvisCheck.text = tr(R.string.settings_jarvis_listen)
         jarvisCheck.setTextColor(Color.WHITE)
         jarvisCheck.isChecked = prefs.jarvisWakeWord
         column.addView(jarvisCheck)
         onDeviceCheck = CheckBox(this)
-        onDeviceCheck.text = "Reconnaître « Hey Jarvis » sur la tablette (sinon par Home Assistant)"
+        onDeviceCheck.text = tr(R.string.settings_jarvis_on_device)
         onDeviceCheck.setTextColor(Color.WHITE)
         onDeviceCheck.isChecked = prefs.jarvisOnDevice
         column.addView(onDeviceCheck)
-        column.addView(button("Autoriser le micro") {
+        column.addView(button(tr(R.string.settings_allow_mic)) {
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                toast("Le micro est déjà autorisé")
+                toast(tr(R.string.settings_mic_already))
             } else {
                 requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), MainActivity.REQUEST_MIC)
             }
         })
-        column.addView(button("Tester Jarvis maintenant") { ApiService.instance?.jarvis?.talk() })
+        column.addView(button(tr(R.string.settings_test_jarvis)) { ApiService.instance?.jarvis?.talk() })
 
-        column.addView(heading("Mises à jour", 18f))
+        column.addView(heading(tr(R.string.settings_updates), 18f))
         updateText = TextView(this)
         updateText.setTextColor(0xFFB0C4E0.toInt())
         updateText.textSize = 14f
         updateText.setLineSpacing(0f, 1.3f)
         column.addView(updateText)
         updateCheck = CheckBox(this)
-        updateCheck.text = "Installer automatiquement les nouvelles versions"
+        updateCheck.text = tr(R.string.settings_auto_update)
         updateCheck.setTextColor(Color.WHITE)
         updateCheck.isChecked = prefs.autoUpdate
         column.addView(updateCheck)
-        column.addView(button("Autoriser l’installation des mises à jour") {
+        column.addView(button(tr(R.string.settings_allow_install)) {
             open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
         })
-        column.addView(button("Vérifier et installer maintenant") { Updater.check(this, install = true) })
+        column.addView(button(tr(R.string.settings_check_now)) { Updater.check(this, install = true) })
 
-        column.addView(heading("Applis du dock", 18f))
-        column.addView(label("« Dock » : l’appli apparaît dans le dock. « Vidéo » : pas de retour automatique tant qu’elle est ouverte."))
+        column.addView(heading(tr(R.string.settings_dock_apps), 18f))
+        column.addView(label(tr(R.string.settings_dock_help)))
         for (app in Apps.listLaunchable(this)) column.addView(appRow(app))
 
-        column.addView(button("Enregistrer") { save() })
+        column.addView(button(tr(R.string.settings_save)) { save() })
 
         val scroll = ScrollView(this)
         scroll.setBackgroundColor(0xFF050C1E.toInt())
@@ -204,31 +204,31 @@ class SettingsActivity : Activity() {
         val mic = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         val state = ApiService.instance?.jarvis?.state
         jarvisText.text = listOf(
-            if (mic) "✅ Micro autorisé" else "⚠️ Micro non autorisé : Jarvis ne peut pas vous entendre",
+            if (mic) tr(R.string.jarvis_mic_ok) else tr(R.string.jarvis_mic_missing),
             when (state) {
-                Jarvis.State.WAITING -> "✅ Jarvis attend « Hey Jarvis »"
-                Jarvis.State.OFF, null -> "➖ Jarvis inactif (Home Assistant pas encore connecté, ou écoute désactivée)"
-                else -> "✅ Jarvis est en pleine conversation"
+                Jarvis.State.WAITING -> tr(R.string.jarvis_status_waiting)
+                Jarvis.State.OFF, null -> tr(R.string.jarvis_status_off)
+                else -> tr(R.string.jarvis_status_busy)
             },
             if (ApiService.instance?.jarvis?.detectsOnDevice == true) {
-                "« Hey Jarvis » est reconnu directement par la tablette."
+                tr(R.string.jarvis_detect_tablet)
             } else {
-                "« Hey Jarvis » est reconnu par Home Assistant (openWakeWord)."
+                tr(R.string.jarvis_detect_ha)
             }
         ).joinToString("\n")
     }
 
     private fun updateLine(status: String): String {
         val allowed = packageManager.canRequestPackageInstalls()
-        return "Version installée : ${BuildConfig.VERSION_NAME}\n" +
-            (if (allowed) "✅ Installation des mises à jour autorisée" else "⚠️ Installation des mises à jour non autorisée") +
+        return tr(R.string.update_installed_version, BuildConfig.VERSION_NAME) + "\n" +
+            (if (allowed) tr(R.string.update_install_allowed) else tr(R.string.update_install_denied)) +
             "\n$status"
     }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (!prefs.isConfigured) {
-            toast("Enregistre d’abord les réglages")
+            toast(tr(R.string.settings_save_first))
         } else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
@@ -241,11 +241,11 @@ class SettingsActivity : Activity() {
         val delay = delayField.text.toString().trim().toIntOrNull() ?: 0
         val saverMinutes = saverField.text.toString().trim().toIntOrNull() ?: 0
         when {
-            saverCheck.isChecked && saverMinutes < 1 -> toast("Le délai de l’écran de veille doit être d’au moins 1 minute")
+            saverCheck.isChecked && saverMinutes < 1 -> toast(tr(R.string.error_saver_delay))
             !(url.startsWith("http://") || url.startsWith("https://")) ->
-                toast("L’adresse doit commencer par http:// ou https://")
-            pin.length < 4 -> toast("Le code doit faire au moins 4 chiffres")
-            delay < 10 -> toast("Le délai doit être d’au moins 10 secondes")
+                toast(tr(R.string.error_url))
+            pin.length < 4 -> toast(tr(R.string.error_pin))
+            delay < 10 -> toast(tr(R.string.error_delay))
             else -> {
                 prefs.haUrl = url
                 prefs.pin = pin
@@ -264,7 +264,7 @@ class SettingsActivity : Activity() {
                 val checked = handleGroup.findViewById<RadioButton>(handleGroup.checkedRadioButtonId)
                 prefs.handlePosition = (checked?.tag as? String) ?: Prefs.HANDLE_BOTTOM_RIGHT
                 ApiService.instance?.onDockChanged()
-                toast("Réglages enregistrés")
+                toast(tr(R.string.settings_saved))
                 finish()
             }
         }
@@ -275,23 +275,21 @@ class SettingsActivity : Activity() {
         val overlay = Settings.canDrawOverlays(this)
         val activity = AppState.accessibilityActive
         statusText.text = listOf(
-            (if (home) "✅ " else "⚠️ ") + "Écran d’accueil par défaut",
-            (if (overlay) "✅ Affichage par-dessus les autres applis" else "⚠️ Affichage par-dessus les autres applis (indispensable au retour automatique)"),
-            (if (activity) "✅ Détection d’activité" else "➖ Détection d’activité (sans elle : retour après un délai fixe)")
+            (if (home) "✅ " else "⚠️ ") + tr(R.string.status_home),
+            (if (overlay) tr(R.string.status_overlay_ok) else tr(R.string.status_overlay_missing)),
+            (if (activity) tr(R.string.status_activity_ok) else tr(R.string.status_activity_missing))
         ).joinToString("\n")
     }
 
     private fun updateHaStatus() {
         val service = ApiService.instance
         val error = AppState.apiError
-        val ip = localIpAddress() ?: "adresse inconnue"
+        val ip = localIpAddress() ?: tr(R.string.unknown_address)
         haStatusText.text = when {
             error != null -> "⚠️ $error"
-            service == null -> "➖ Service non démarré"
-            service.connectedClients() > 0 -> "✅ Connecté à Home Assistant\nAppareil : ${service.friendlyName} (${service.deviceName})"
-            else -> "⏳ En attente de Home Assistant\n" +
-                "Home Assistant devrait proposer « ${service.friendlyName} » dans Paramètres → Appareils et services.\n" +
-                "Sinon : Ajouter une intégration → ESPHome → hôte $ip, port 6053."
+            service == null -> tr(R.string.ha_service_stopped)
+            service.connectedClients() > 0 -> tr(R.string.ha_connected, service.friendlyName, service.deviceName)
+            else -> tr(R.string.ha_waiting, service.friendlyName, ip)
         }
     }
 
@@ -315,7 +313,7 @@ class SettingsActivity : Activity() {
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            toast("Ce réglage n’existe pas sur cette tablette")
+            toast(tr(R.string.setting_missing))
         }
     }
 
@@ -350,7 +348,7 @@ class SettingsActivity : Activity() {
         row.addView(inDock)
 
         val video = CheckBox(this)
-        video.text = "Vidéo"
+        video.text = tr(R.string.dock_video)
         video.setTextColor(Color.WHITE)
         video.isChecked = app.packageName in videoSelection
         video.setOnCheckedChangeListener { _, checked ->
