@@ -29,6 +29,10 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 ## Installation
 
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22app.walldock%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fpsycho1807%2FWallDock%22%2C%22author%22%3A%22psycho1807%22%2C%22name%22%3A%22WallDock%22%7D"><img src="docs/badge_obtainium.png" alt="Get it on Obtainium" height="54"></a>
+
+Avec [Obtainium](https://github.com/ImranR98/Obtainium), WallDock s'installe et se met à jour directement depuis GitHub (bouton ci-dessus, depuis la tablette). Sinon :
+
 1. Sur la tablette, ouvrir la [dernière version](https://github.com/psycho1807/WallDock/releases/latest) et installer `WallDock-x.y.z.apk`.
 2. Au premier lancement : adresse du tableau de bord (ex. `http://192.168.1.10:8123/lovelace/0?kiosk`), code administrateur, applis du dock, puis **Enregistrer**.
 3. Dans les réglages, donner les autorisations : écran d'accueil, affichage par-dessus les autres applis, micro (pour Jarvis), installation des mises à jour.
@@ -64,7 +68,11 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 - Native ESPHome API integration (auto-discovered): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements and voice timers.
 
-Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest). The app UI is available in English and French (it follows the tablet language).
+Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest), or with [Obtainium](https://github.com/ImranR98/Obtainium) to get updates straight from GitHub:
+
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22app.walldock%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fpsycho1807%2FWallDock%22%2C%22author%22%3A%22psycho1807%22%2C%22name%22%3A%22WallDock%22%7D"><img src="docs/badge_obtainium.png" alt="Get it on Obtainium" height="54"></a>
+
+ The app UI is available in English and French (it follows the tablet language).
 
 Support the project: [Ko-fi](https://ko-fi.com/psycho1807)
 
