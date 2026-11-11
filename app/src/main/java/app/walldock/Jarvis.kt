@@ -530,6 +530,9 @@ class Jarvis(
                     main.post { onLocalWakeWord() }
                 }
             }
+            // Traitements du son (bruit, gain, écho) seulement pour la phrase envoyée à HA :
+            // les modèles « Hey Jarvis » et « Stop » ont été entraînés sur du son brut
+            setAudioEffectsEnabled(streaming && state != State.WAITING)
             val stop = stopDetector
             if (stop != null && (state == State.SPEAKING || timers.isSoundPlaying)) {
                 if (!stopListening) {
@@ -560,24 +563,39 @@ class Jarvis(
         releaseAudioEffects()
         try {
             if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
-                android.media.audiofx.NoiseSuppressor.create(session)?.let { it.enabled = true; audioEffects.add(it) }
+                android.media.audiofx.NoiseSuppressor.create(session)?.let { it.enabled = false; audioEffects.add(it) }
             }
         } catch (e: Exception) {
             // pas de réduction de bruit sur cette tablette
         }
         try {
             if (android.media.audiofx.AutomaticGainControl.isAvailable()) {
-                android.media.audiofx.AutomaticGainControl.create(session)?.let { it.enabled = true; audioEffects.add(it) }
+                android.media.audiofx.AutomaticGainControl.create(session)?.let { it.enabled = false; audioEffects.add(it) }
             }
         } catch (e: Exception) {
             // pas de réglage automatique du volume
         }
         try {
             if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
-                android.media.audiofx.AcousticEchoCanceler.create(session)?.let { it.enabled = true; audioEffects.add(it) }
+                android.media.audiofx.AcousticEchoCanceler.create(session)?.let { it.enabled = false; audioEffects.add(it) }
             }
         } catch (e: Exception) {
             // pas d'annulation d'écho
+        }
+    }
+
+    @Volatile
+    private var effectsEnabled = false
+
+    private fun setAudioEffectsEnabled(enabled: Boolean) {
+        if (enabled == effectsEnabled) return
+        effectsEnabled = enabled
+        for (effect in audioEffects) {
+            try {
+                effect.enabled = enabled
+            } catch (e: Exception) {
+                // effet indisponible
+            }
         }
     }
 
@@ -590,6 +608,7 @@ class Jarvis(
             }
         }
         audioEffects.clear()
+        effectsEnabled = false
     }
 
     private fun stopMic() {
