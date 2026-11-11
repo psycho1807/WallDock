@@ -117,6 +117,10 @@ class WakeWordDetector private constructor(dir: File) {
         private const val BASE_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/"
         private val MODELS = listOf(MEL_MODEL, EMBEDDING_MODEL, WAKE_MODEL)
 
+        /** Dernière erreur de téléchargement ou de chargement (diagnostic). */
+        @Volatile
+        var lastError: String? = null
+
         private fun modelDir(context: Context) = File(context.filesDir, "wakeword")
 
         fun modelsPresent(context: Context): Boolean =
@@ -137,14 +141,21 @@ class WakeWordDetector private constructor(dir: File) {
                     connection.instanceFollowRedirects = true
                     connection.setRequestProperty("User-Agent", "WallDock/${BuildConfig.VERSION_NAME}")
                     try {
-                        if (connection.responseCode != 200) return false
+                        if (connection.responseCode != 200) {
+                            lastError = "Téléchargement de $name : HTTP ${connection.responseCode}"
+                            return false
+                        }
                         connection.inputStream.use { input -> temp.outputStream().use { input.copyTo(it) } }
                     } finally {
                         connection.disconnect()
                     }
-                    if (!temp.renameTo(target)) return false
+                    if (!temp.renameTo(target)) {
+                        lastError = "Impossible d'enregistrer $name"
+                        return false
+                    }
                 } catch (e: Exception) {
                     temp.delete()
+                    lastError = "Téléchargement de $name : ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
                     return false
                 }
             }
@@ -155,6 +166,7 @@ class WakeWordDetector private constructor(dir: File) {
         fun load(context: Context): WakeWordDetector? = try {
             if (modelsPresent(context)) WakeWordDetector(modelDir(context)) else null
         } catch (e: Throwable) {
+            lastError = "Chargement des modèles : ${e.javaClass.simpleName} ${e.message ?: ""}".trim().take(200)
             null
         }
     }

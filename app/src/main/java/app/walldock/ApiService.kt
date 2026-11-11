@@ -80,11 +80,13 @@ class ApiService : Service(), EsphomeServer.Handler {
         .unit("%").range(0f, 100f, 1f).icon("mdi:volume-high")
     private val stopRinging = Entity(Entity.Kind.BUTTON, "arreter_la_sonnerie", "Arrêter la sonnerie")
         .icon("mdi:alarm-off")
+    private val detectionMode = Entity(Entity.Kind.TEXT_SENSOR, "detection_hey_jarvis", "Détection Hey Jarvis")
+        .icon("mdi:ear-hearing").category(Entity.CATEGORY_DIAGNOSTIC)
     private val wakeScore = Entity(Entity.Kind.SENSOR, "score_hey_jarvis", "Score Hey Jarvis")
         .unit("%").measurement().icon("mdi:waveform").category(Entity.CATEGORY_DIAGNOSTIC)
 
     private val entities = listOf(
-        jarvisState, talkToJarvis, volume, stopRinging, wakeScore, micLevel, audioSent,
+        jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate
     )
@@ -102,6 +104,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 val score = if (assistant.detectsOnDevice) assistant.wakeScorePeak else 0f
                 assistant.wakeScorePeak = 0f
                 server?.setState(wakeScore, (score * 100f).toInt().toFloat())
+                server?.setState(detectionMode, assistant.detectionStatus)
             }
             reportVolume()
             main.postDelayed(this, 5_000)

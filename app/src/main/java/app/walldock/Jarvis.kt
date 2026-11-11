@@ -45,6 +45,15 @@ class Jarvis(
     @Volatile
     private var loadingDetector = false
 
+    /** Où est reconnu « Hey Jarvis » (affiché dans HA). */
+    val detectionStatus: String
+        get() = when {
+            !onDeviceEnabled -> "Home Assistant (choisi dans les réglages)"
+            detector != null -> "Tablette"
+            loadingDetector -> "Préparation des modèles…"
+            else -> "Home Assistant (" + (WakeWordDetector.lastError ?: "modèles absents") + ")"
+        }
+
     /** Meilleur score « Hey Jarvis » depuis la dernière lecture (diagnostic). */
     @Volatile
     var wakeScorePeak = 0f
