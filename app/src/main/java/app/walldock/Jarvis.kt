@@ -55,6 +55,12 @@ class Jarvis(
     private var restartScheduled = false
     private val restartRunnable = Runnable { restartWaiting() }
 
+    /** Un pipeline tourne côté HA (de la demande de démarrage jusqu'à RUN_END). */
+    private var runActive = false
+    /** Action à lancer une fois le pipeline en cours vraiment terminé (événements périmés ignorés d'ici là). */
+    private var afterStop: (() -> Unit)? = null
+    private val afterStopTimeout = Runnable { runAfterStop() }
+
     /** Prévenu (fil principal) quand l'état change, pour l'afficher dans HA. */
     var onStateChanged: ((State) -> Unit)? = null
 
@@ -76,32 +82,28 @@ class Jarvis(
             context.toast("Autorise le micro dans les réglages de WallDock")
             return@post
         }
-        if (state == State.WAITING || state == State.LISTENING) server.voiceStop()
         stopPlayback()
-        startConversationTurn(conversationId)
+        stopThen { startConversationTurn(conversationId) }
     }
 
     /** Toucher l'écran de Jarvis : on arrête tout et on revient en veille. */
     fun cancel() {
-        if (state != State.WAITING && state != State.OFF) server.voiceStop()
         stopPlayback()
-        streaming = false
         continueConversation = false
         conversationId = ""
         overlay.hide()
-        restartWaiting()
+        stopThen { restartWaiting() }
     }
 
     /** Réglage ou autorisation du micro modifiés. */
     fun onSettingsChanged() = main.post {
-        if (state == State.WAITING || state == State.OFF) {
-            if (state == State.WAITING) server.voiceStop()
-            restartWaiting()
-        }
+        if (state == State.WAITING || state == State.OFF) stopThen { restartWaiting() }
     }
 
     fun release() {
         main.removeCallbacksAndMessages(null)
+        afterStop = null
+        runActive = false
         streaming = false
         stopMic()
         stopPlayback()
@@ -119,6 +121,9 @@ class Jarvis(
                 main.postDelayed(restartRunnable, 1_000)
             } else {
                 main.removeCallbacks(restartRunnable)
+                main.removeCallbacks(afterStopTimeout)
+                afterStop = null
+                runActive = false
                 streaming = false
                 stopMic()
                 stopPlayback()
@@ -146,9 +151,11 @@ class Jarvis(
     }
 
     override fun onAnnounce(mediaId: String, text: String, preannounceMediaId: String, startConversation: Boolean) {
-        main.post {
-            if (state == State.WAITING || state == State.LISTENING) server.voiceStop()
-            streaming = false
+        main.post { stopThen { announce(mediaId, text, preannounceMediaId, startConversation) } }
+    }
+
+    private fun announce(mediaId: String, text: String, preannounceMediaId: String, startConversation: Boolean) {
+        run {
             stopPlayback()
             wakeUp()
             setState(State.SPEAKING)
@@ -169,7 +176,38 @@ class Jarvis(
         }
     }
 
+    /**
+     * Arrête proprement le pipeline en cours puis lance [action].
+     * HA renvoie encore des événements de l'ancien pipeline (erreur, RUN_END) : on les ignore
+     * jusqu'à son RUN_END, sinon ils interrompraient le nouveau.
+     */
+    private fun stopThen(action: () -> Unit) {
+        main.removeCallbacks(restartRunnable)
+        restartScheduled = false
+        if (!runActive) {
+            action()
+            return
+        }
+        streaming = false
+        afterStop = action
+        server.voiceStop()
+        main.removeCallbacks(afterStopTimeout)
+        main.postDelayed(afterStopTimeout, 2_000)
+    }
+
+    private fun runAfterStop() {
+        main.removeCallbacks(afterStopTimeout)
+        runActive = false
+        val action = afterStop ?: return
+        afterStop = null
+        action()
+    }
+
     private fun handleEvent(type: Int, data: Map<String, String>) {
+        if (afterStop != null) {
+            if (type == EsphomeServer.VOICE_EVENT_RUN_END) runAfterStop()
+            return
+        }
         when (type) {
             EsphomeServer.VOICE_EVENT_WAKE_WORD_END -> {
                 // « Hey Jarvis » entendu : HA enchaîne sur la reconnaissance de la phrase
@@ -208,6 +246,7 @@ class Jarvis(
             }
             EsphomeServer.VOICE_EVENT_RUN_END -> {
                 streaming = false
+                runActive = false
                 runEnded = true
                 if (!speechPending) finishRun()
             }
@@ -279,6 +318,7 @@ class Jarvis(
     }
 
     private fun startRun(conversation: String, flags: Int) {
+        runActive = true
         runEnded = false
         speechPending = false
         continueConversation = false
