@@ -245,13 +245,14 @@ class Jarvis(
             EsphomeServer.VOICE_EVENT_TTS_END -> {
                 val url = data["url"] ?: ""
                 if (url.isNotBlank()) {
-                    speechPending = true
                     setState(State.SPEAKING)
                     overlay.show(JarvisOverlay.Mode.SPEAKING)
                     play(url) {
                         speechPending = false
                         if (runEnded) finishRun()
                     }
+                    // Après play() : il remet speechPending à faux en coupant le son précédent
+                    speechPending = true
                 }
             }
             EsphomeServer.VOICE_EVENT_RUN_END -> {
@@ -462,7 +463,7 @@ class Jarvis(
             }
             media.prepareAsync()
         } catch (e: Exception) {
-            done()
+            main.post { done() }
         }
     }
 
