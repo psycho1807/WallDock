@@ -1,0 +1,4 @@
+• Media player in Home Assistant: music, radio, announcements, pause, volume
+• Say "Stop" to silence Jarvis or a ringing timer
+• Jarvis no longer shows an error when nobody answers or another tablet already answered
+• Cleaner microphone audio (noise suppression, echo cancellation)

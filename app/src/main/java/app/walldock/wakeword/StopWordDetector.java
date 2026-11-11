@@ -51,6 +51,25 @@ public final class StopWordDetector {
 
     /** Charge le modèle, ou renvoie null si la tablette ne peut pas l'exécuter. */
     public static StopWordDetector load(Context context) {
+        // Un plantage natif de TensorFlow Lite ne peut pas être intercepté : on note l'essai en cours,
+        // et si l'appli est morte pendant le chargement, on n'essaie plus (le reste de l'appli marche).
+        android.content.SharedPreferences prefs = context.getSharedPreferences("walldock", Context.MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_IN_PROGRESS, false)) {
+            prefs.edit().putBoolean(KEY_IN_PROGRESS, false).putBoolean(KEY_CRASHED, true).commit();
+        }
+        if (prefs.getBoolean(KEY_CRASHED, false)) return null;
+        prefs.edit().putBoolean(KEY_IN_PROGRESS, true).commit();
+        try {
+            return loadUnguarded(context);
+        } finally {
+            prefs.edit().putBoolean(KEY_IN_PROGRESS, false).commit();
+        }
+    }
+
+    private static final String KEY_IN_PROGRESS = "stopword_load_in_progress";
+    private static final String KEY_CRASHED = "stopword_crashed";
+
+    private static StopWordDetector loadUnguarded(Context context) {
         try {
             File file = new File(context.getFilesDir(), "wakeword/stop.tflite");
             if (!file.isFile()) {
