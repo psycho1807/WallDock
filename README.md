@@ -52,7 +52,55 @@ Avec [Obtainium](https://github.com/ImranR98/Obtainium), WallDock s'installe et 
 4. Home Assistant propose ensuite « WallDock … » dans **Paramètres → Appareils et services** : l'accepter.
 5. Pour Jarvis : un pipeline Assist avec STT/TTS ; pour la détection par HA, l'appli openWakeWord.
 
-Tablettes Honor/Huawei : désactiver l'optimisation de batterie pour WallDock.
+### Tablette murale : à faire absolument
+
+- **Définir WallDock comme écran d'accueil** (réglages → « Définir WallDock comme écran d'accueil »). Depuis la 0.15.0, WallDock se relance aussi tout seul au démarrage de la tablette (coupure de courant) grâce à l'autorisation « afficher par-dessus les autres applis » ; mais certaines surcouches Android bloquent ce lancement : l'écran d'accueil reste la solution la plus sûre.
+- **Désactiver l'optimisation de batterie** pour WallDock, sinon Android peut couper l'appli (et donc HA, Jarvis, le retour au tableau de bord) :
+  - **Samsung (One UI)** : Paramètres → Applications → WallDock → Batterie → **Non restreinte** ; et Paramètres → Batterie → Limites d'utilisation en arrière-plan → retirer WallDock des applis « en veille ».
+  - **Xiaomi / Redmi / POCO (MIUI, HyperOS)** : Paramètres → Applications → WallDock → **Démarrage automatique** activé, Économiseur de batterie → **Aucune restriction** ; dans les applis récentes, verrouiller WallDock (cadenas).
+  - **Honor / Huawei** : Paramètres → Batterie → Lancement d'applis → WallDock → **Gérer manuellement**, tout cocher.
+  - **Lenovo, Oppo, Realme, OnePlus…** : même principe (démarrage auto + batterie sans restriction). Le site [dontkillmyapp.com](https://dontkillmyapp.com) détaille chaque marque.
+
+### Autorisations : à quoi elles servent
+
+| Autorisation | Pourquoi |
+|---|---|
+| Internet, état du réseau, état du Wi-Fi | Afficher le tableau de bord, parler à Home Assistant, mesurer le signal Wi-Fi. |
+| Affichage par-dessus les autres applis | Retour automatique au tableau de bord, popups (alertes, caméra, Jarvis), relance au démarrage. |
+| Démarrage avec la tablette (`RECEIVE_BOOT_COMPLETED`) | Relancer WallDock après une coupure de courant. Désactivable dans les réglages ou depuis HA. |
+| Micro | Jarvis (« Hey Jarvis », « Stop »). Le son n'est envoyé qu'à **votre** Home Assistant, et seulement après le mot d'activation quand il est reconnu sur la tablette. |
+| Caméra | Uniquement si vous activez la détection de mouvement. Les images sont analysées sur la tablette et ne sont **jamais** envoyées ni enregistrées. |
+| Service de premier plan, verrou de veille, notifications | Garder la connexion à HA active en permanence (notification permanente obligatoire sous Android). |
+| Service d'accessibilité (facultatif) | Savoir si vous touchez l'écran dans une autre appli, pour ne pas revenir au tableau de bord pendant que vous l'utilisez. Il ne lit ni ne transmet aucun contenu. |
+| Modifier les paramètres système (facultatif) | Seulement si vous cochez « Régler la luminosité du système ». |
+| `REQUEST_INSTALL_PACKAGES` | Installer les mises à jour de WallDock. L'appli ne télécharge **que** l'APK de la dernière release publique de ce dépôt GitHub, et Android refuse toute mise à jour qui n'est pas signée avec la même clé que l'appli installée. |
+| `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Android 12+ : permet d'installer ces mises à jour sans confirmation (seulement pour WallDock lui-même, jamais pour une autre appli). |
+
+**Désactiver les mises à jour automatiques** : réglages → décocher « Mises à jour automatiques », ou l'interrupteur « Mises à jour automatiques » dans HA. Vous pouvez aussi refuser l'autorisation d'installer des applis à WallDock (Android → Applis spéciales → Installer des applis inconnues), et mettre à jour à la main ou avec Obtainium.
+
+### WallDock ou Fully Kiosk ?
+
+Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser](https://www.fully-kiosk.com/) (novembre 2026). Fully est un produit mûr et très complet ; WallDock est fait pour Home Assistant avant tout.
+
+| | WallDock | Fully Kiosk (licence PLUS) |
+|---|---|---|
+| Prix | Gratuit, libre (GPL-3.0) | 8,90 € par tablette (paiement unique) |
+| Tableau de bord plein écran, écran toujours allumé | ✅ | ✅ |
+| Relance au démarrage | ✅ | ✅ |
+| Intégration HA | ✅ API native ESPHome, découverte auto, chiffrée | ✅ intégration officielle « Fully Kiosk Browser » |
+| Réglages modifiables depuis HA | ✅ | ✅ |
+| Détection de mouvement (caméra) | ✅ | ✅ (+ détection de visage, de son) |
+| Écran de veille | ✅ horloge ou page au choix | ✅ plus d'options (playlist, luminosité…) |
+| Lecteur multimédia, synthèse vocale, alertes plein écran | ✅ | ✅ (sons, TTS ; pas de popup d'alerte HA dédiée) |
+| **Assistant vocal (satellite Assist), mot d'activation, minuteurs** | ✅ | ❌ |
+| Dock d'applis + retour auto au tableau de bord | ✅ | ✅ (lanceur d'applis, réglable) |
+| Verrouillage kiosque complet (« device owner », blocage des boutons, de la barre d'état) | ❌ (barres masquées seulement) | ✅ |
+| Administration à distance (page web, Fully Cloud), MQTT, API REST | ❌ (tout passe par HA) | ✅ |
+| Planification veille/réveil intégrée | ❌ (à faire avec une automatisation HA) | ✅ |
+| Navigateur complet (onglets, PDF, liste blanche d'adresses…) | ❌ | ✅ |
+| Distribution | GitHub / Obtainium (Play Store prévu) | Play Store et site officiel |
+
+En résumé : si vous voulez un écran mural Home Assistant avec un assistant vocal, gratuit, WallDock est fait pour ça. Si vous avez besoin d'un verrouillage strict (tablette en accès public), d'une gestion de flotte ou d'un navigateur très configurable, Fully reste la référence.
 
 ## Soutenir le projet
 
@@ -78,6 +126,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 **WallDock** turns an Android tablet into a Home Assistant wall panel:
 
+- Detailed setup for wall tablets (home screen, battery optimization on Samsung, Xiaomi, Honor/Huawei…), what each permission is for, and an honest comparison with Fully Kiosk: see the French sections above.
 - Motion detection with the front camera (screen wakes up, "Motion" sensor in HA; images never leave the tablet).
 - Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, start on boot (power cut), screensaver (clock or any dashboard page), optional system brightness, offline fallback screen, automatic updates from GitHub releases.
 - Monitoring sensors: battery level and temperature, Wi-Fi signal, inactivity time and a screen-activity binary sensor.
