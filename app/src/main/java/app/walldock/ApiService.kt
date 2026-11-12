@@ -16,6 +16,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.speech.tts.TextToSpeech
 import android.net.nsd.NsdManager
+import app.walldock.sendspin.SendspinClient
 import android.net.nsd.NsdServiceInfo
 import android.os.BatteryManager
 import android.os.Build
@@ -162,6 +163,91 @@ class ApiService : Service(), EsphomeServer.Handler {
         .icon("mdi:brightness-auto").category(Entity.CATEGORY_CONFIG)
     private val setListenScreenOff = Entity(Entity.Kind.SWITCH, "reglage_ecoute_ecran_eteint", tr(R.string.entity_set_listen_screen_off))
         .icon("mdi:microphone-settings").category(Entity.CATEGORY_CONFIG)
+    private val setSendspin = Entity(Entity.Kind.SWITCH, "reglage_lecteur_music_assistant", tr(R.string.entity_set_sendspin))
+        .icon("mdi:speaker-wireless").category(Entity.CATEGORY_CONFIG)
+
+    // ---- Lecteur Music Assistant (Sendspin) ----
+    private var sendspin: SendspinClient? = null
+    private var sendspinPlayer: SendspinPlayer? = null
+    private var sendspinNsd: NsdManager.RegistrationListener? = null
+
+    /** Démarre ou arrête le lecteur Music Assistant selon le réglage. */
+    fun applySendspin() {
+        val prefs = Prefs(this)
+        if (prefs.sendspinEnabled && sendspin == null) {
+            val out = SendspinPlayer(this)
+            out.setVolume(prefs.sendspinVolume, prefs.sendspinMuted)
+            out.onPlaying = { playing ->
+                main.post {
+                    AppState.sendspinStatus = if (playing) "playing" else if (sendspin != null) "connected" else "off"
+                }
+            }
+            val client = SendspinClient(
+                prefs.sendspinKey, friendlyName, "${Build.MANUFACTURER} ${Build.MODEL}", BuildConfig.VERSION_NAME,
+                prefs.sendspinVolume, prefs.sendspinMuted,
+                object : SendspinClient.Player by out {
+                    override fun setVolume(volume: Int, muted: Boolean) {
+                        out.setVolume(volume, muted)
+                        val p = Prefs(this@ApiService)
+                        p.sendspinVolume = volume
+                        p.sendspinMuted = muted
+                    }
+                }
+            ) { status -> main.post { AppState.sendspinStatus = status } }
+            sendspinPlayer = out
+            sendspin = client
+            Thread {
+                try {
+                    client.start(SendspinClient.PORT)
+                    main.post { registerSendspinMdns() }
+                } catch (e: Exception) {
+                    main.post { AppState.sendspinStatus = "error" }
+                }
+            }.start()
+        } else if (!prefs.sendspinEnabled && sendspin != null) {
+            unregisterSendspinMdns()
+            val client = sendspin
+            sendspin = null
+            sendspinPlayer = null
+            Thread { client?.stop() }.start()
+            AppState.sendspinStatus = "off"
+        }
+    }
+
+    private fun registerSendspinMdns() {
+        if (isEmulatorNetwork() || sendspin == null) return
+        val manager = getSystemService(NsdManager::class.java) ?: return
+        val service = NsdServiceInfo()
+        service.serviceName = deviceName
+        service.serviceType = "_sendspin._tcp"
+        service.port = SendspinClient.PORT
+        service.setAttribute("path", SendspinClient.PATH)
+        service.setAttribute("name", friendlyName)
+        val listener = object : NsdManager.RegistrationListener {
+            override fun onServiceRegistered(info: NsdServiceInfo) {}
+            override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) {}
+            override fun onServiceUnregistered(info: NsdServiceInfo) {}
+            override fun onUnregistrationFailed(info: NsdServiceInfo, errorCode: Int) {}
+        }
+        try {
+            manager.registerService(service, NsdManager.PROTOCOL_DNS_SD, listener)
+            sendspinNsd = listener
+        } catch (e: Exception) {
+            // découverte indisponible
+        }
+    }
+
+    private fun unregisterSendspinMdns() {
+        sendspinNsd?.let {
+            try {
+                getSystemService(NsdManager::class.java)?.unregisterService(it)
+            } catch (e: Exception) {
+                // déjà retiré
+            }
+        }
+        sendspinNsd = null
+    }
+
     /** Garde le processeur éveillé pendant l'écoute de Jarvis, écran éteint. */
     private var listenLock: PowerManager.WakeLock? = null
 
@@ -200,7 +286,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         setAutoUpdate, setHandle, setUrl,
         motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake,
         batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot,
-        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setListenScreenOff, nextAlarm, setZoom
+        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setListenScreenOff, nextAlarm, setZoom, setSendspin
     )
 
     /**
@@ -464,6 +550,7 @@ class ApiService : Service(), EsphomeServer.Handler {
             server?.setState(jarvisState, JARVIS_LABELS[it] ?: "")
             // La musique se met en pause pendant que Jarvis écoute ou parle
             tabletPlayer.setInterrupted(it == Jarvis.State.LISTENING || it == Jarvis.State.THINKING || it == Jarvis.State.SPEAKING)
+            sendspinPlayer?.setInterrupted(it == Jarvis.State.LISTENING || it == Jarvis.State.THINKING || it == Jarvis.State.SPEAKING)
         }
         jarvis = assistant
         srv.setVoiceHandler(assistant)
@@ -500,6 +587,8 @@ class ApiService : Service(), EsphomeServer.Handler {
                 pendingSpeech.clear()
             }
         }
+
+        applySendspin()
 
         Thread {
             try {
@@ -547,6 +636,10 @@ class ApiService : Service(), EsphomeServer.Handler {
             // déjà désinscrit
         }
         unregisterMdns()
+        unregisterSendspinMdns()
+        sendspin?.let { c -> Thread { c.stop() }.start() }
+        sendspin = null
+        sendspinPlayer = null
         server?.stop()
         server = null
         super.onDestroy()
@@ -610,6 +703,10 @@ class ApiService : Service(), EsphomeServer.Handler {
                     prefs.listenScreenOff = state
                     updateListenLock()
                 }
+                entity === setSendspin -> {
+                    prefs.sendspinEnabled = state
+                    applySendspin()
+                }
                 entity === setSchedule -> prefs.scheduleEnabled = state
                 entity === setSystemBrightness -> {
                     prefs.systemBrightness = state
@@ -672,6 +769,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(setSystemBrightness, prefs.systemBrightness)
         srv.setState(setStartOnBoot, prefs.startOnBoot)
         srv.setState(setListenScreenOff, prefs.listenScreenOff)
+        srv.setState(setSendspin, prefs.sendspinEnabled)
         srv.setState(setSchedule, prefs.scheduleEnabled)
         srv.setState(setSleepTime, prefs.sleepTime)
         srv.setState(setWakeTime, prefs.wakeTime)

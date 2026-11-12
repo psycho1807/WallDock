@@ -161,6 +161,29 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("listen_screen_off", true)
         set(value) = sp.edit().putBoolean("listen_screen_off", value).apply()
 
+    // ---- Lecteur Music Assistant (Sendspin) ----
+    var sendspinEnabled: Boolean
+        get() = sp.getBoolean("sendspin_enabled", false)
+        set(value) = sp.edit().putBoolean("sendspin_enabled", value).apply()
+    var sendspinVolume: Int
+        get() = sp.getInt("sendspin_volume", 60)
+        set(value) = sp.edit().putInt("sendspin_volume", value.coerceIn(0, 100)).apply()
+    var sendspinMuted: Boolean
+        get() = sp.getBoolean("sendspin_muted", false)
+        set(value) = sp.edit().putBoolean("sendspin_muted", value).apply()
+
+    /** Clé privée X25519 de la tablette pour Sendspin (créée une fois, garde le même lecteur dans MA). */
+    val sendspinKey: ByteArray
+        get() {
+            sp.getString("sendspin_key", null)?.let {
+                val k = android.util.Base64.decode(it, android.util.Base64.NO_WRAP)
+                if (k.size == 32) return k
+            }
+            val k = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+            sp.edit().putString("sendspin_key", android.util.Base64.encodeToString(k, android.util.Base64.NO_WRAP)).apply()
+            return k
+        }
+
     // ---- Écran de veille photos : album Immich ou dossier de la tablette ----
     var immichUrl: String
         get() = sp.getString("immich_url", "") ?: ""
@@ -237,6 +260,10 @@ class Prefs(context: Context) {
 
 /** État partagé entre l'écran principal et les services (même processus). */
 object AppState {
+    /** État du lecteur Music Assistant : off, waiting, connected, playing, error. */
+    @Volatile
+    var sendspinStatus = "off"
+
     /** Vrai quand le tableau de bord est au premier plan. */
     @Volatile
     var dashboardVisible = false

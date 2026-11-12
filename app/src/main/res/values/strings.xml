@@ -281,4 +281,13 @@
     <string name="calendar_empty">Nothing planned</string>
     <string name="calendar_unavailable">Calendars unavailable: the dashboard must be loaded and signed in to Home Assistant</string>
     <string name="calendar_in_dock">“Calendar” button in the dock (Home Assistant calendars: day, week, month, agenda; also the “afficher_calendrier” action from HA)</string>
+    <string name="entity_set_sendspin">Music Assistant player</string>
+    <string name="settings_sendspin_title">Music Assistant</string>
+    <string name="settings_sendspin">Music Assistant player (Sendspin, synchronised with your other speakers)</string>
+    <string name="settings_sendspin_help">In Music Assistant, enable the Sendspin provider: the tablet appears by itself as a player. Accept it once (unpaired player), then group it with other speakers for multi-room.</string>
+    <string name="sendspin_off">Player off</string>
+    <string name="sendspin_waiting">Waiting for Music Assistant…</string>
+    <string name="sendspin_connected">Connected to Music Assistant</string>
+    <string name="sendspin_playing">Playing music</string>
+    <string name="sendspin_error">Port 8928 is already in use</string>
 </resources>

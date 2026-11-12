@@ -13,7 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
  * marcher dès Android 8 : X25519 (portage de TweetNaCl, domaine public), ChaCha20-Poly1305
  * (RFC 8439), SHA-256 / HMAC / HKDF (bibliothèque standard).
  */
-final class NoiseCrypto {
+public final class NoiseCrypto {
 
     private NoiseCrypto() {}
 
@@ -101,7 +101,7 @@ final class NoiseCrypto {
     }
 
     /** X25519 : n (scalaire, 32 octets) × p (point, 32 octets). */
-    static byte[] x25519(byte[] n, byte[] p) {
+    public static byte[] x25519(byte[] n, byte[] p) {
         byte[] z = Arrays.copyOf(n, 32);
         z[31] = (byte) ((n[31] & 127) | 64);
         z[0] &= (byte) 248;
@@ -143,7 +143,7 @@ final class NoiseCrypto {
         return out;
     }
 
-    static byte[] randomBytes(int n) {
+    public static byte[] randomBytes(int n) {
         byte[] out = new byte[n];
         new SecureRandom().nextBytes(out);
         return out;

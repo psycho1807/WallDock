@@ -280,4 +280,13 @@
     <string name="calendar_empty">Rien de prévu</string>
     <string name="calendar_unavailable">Calendriers indisponibles : le tableau de bord doit être chargé et connecté à Home Assistant</string>
     <string name="calendar_in_dock">Bouton « Calendrier » dans le dock (calendriers de Home Assistant : jour, semaine, mois, agenda ; aussi l’action « afficher_calendrier » depuis HA)</string>
+    <string name="entity_set_sendspin">Lecteur Music Assistant</string>
+    <string name="settings_sendspin_title">Music Assistant</string>
+    <string name="settings_sendspin">Lecteur Music Assistant (Sendspin, synchronisé avec vos autres enceintes)</string>
+    <string name="settings_sendspin_help">Dans Music Assistant, activez le fournisseur Sendspin : la tablette apparaît toute seule comme lecteur. Acceptez-la une fois (lecteur non appairé), puis groupez-la avec d’autres enceintes pour le multiroom.</string>
+    <string name="sendspin_off">Lecteur arrêté</string>
+    <string name="sendspin_waiting">En attente de Music Assistant…</string>
+    <string name="sendspin_connected">Connecté à Music Assistant</string>
+    <string name="sendspin_playing">Musique en cours</string>
+    <string name="sendspin_error">Le port 8928 est déjà utilisé</string>
 </resources>

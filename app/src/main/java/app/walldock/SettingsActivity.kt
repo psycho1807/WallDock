@@ -48,6 +48,7 @@ class SettingsActivity : Activity() {
     private lateinit var systemBrightnessCheck: CheckBox
     private lateinit var bootCheck: CheckBox
     private lateinit var listenOffCheck: CheckBox
+    private lateinit var sendspinCheck: CheckBox
     private lateinit var calendarCheck: CheckBox
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
@@ -280,6 +281,21 @@ class SettingsActivity : Activity() {
         column.addView(listenOffCheck)
         column.addView(button(tr(R.string.settings_test_jarvis)) { ApiService.instance?.jarvis?.talk() })
 
+        column.addView(heading(tr(R.string.settings_sendspin_title), 18f))
+        sendspinCheck = CheckBox(this)
+        sendspinCheck.text = tr(R.string.settings_sendspin)
+        sendspinCheck.setTextColor(Color.WHITE)
+        sendspinCheck.isChecked = prefs.sendspinEnabled
+        column.addView(sendspinCheck)
+        column.addView(label(tr(R.string.settings_sendspin_help)))
+        column.addView(label(tr(when (AppState.sendspinStatus) {
+            "waiting" -> R.string.sendspin_waiting
+            "connected" -> R.string.sendspin_connected
+            "playing" -> R.string.sendspin_playing
+            "error" -> R.string.sendspin_error
+            else -> R.string.sendspin_off
+        })))
+
         column.addView(heading(tr(R.string.settings_updates), 18f))
         if (BuildConfig.PLAY_STORE) column.addView(label(tr(R.string.updates_play)))
         updateText = TextView(this)
@@ -460,6 +476,8 @@ class SettingsActivity : Activity() {
                 zoomField.text.toString().toIntOrNull()?.let { prefs.zoom = it }
                 prefs.startOnBoot = bootCheck.isChecked
                 prefs.listenScreenOff = listenOffCheck.isChecked
+                prefs.sendspinEnabled = sendspinCheck.isChecked
+                ApiService.instance?.applySendspin()
                 prefs.calendarInDock = calendarCheck.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
