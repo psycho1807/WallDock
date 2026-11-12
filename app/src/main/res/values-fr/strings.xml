@@ -238,4 +238,6 @@
     <string name="settings_allowed_urls_hint">ex. youtube.com, https://mon-site.fr/page</string>
     <string name="entity_set_zoom">Zoom du tableau de bord</string>
     <string name="settings_zoom">Zoom du tableau de bord en % (ex. 80 = plus de choses à l’écran, 120 = plus gros ; de 50 à 200)</string>
+    <string name="updates_play">Cette version vient de Google Play : les mises à jour sont installées par le Play Store.</string>
+    <string name="updates_play_status">Version Google Play %1$s (mises à jour par le Play Store)</string>
 </resources>

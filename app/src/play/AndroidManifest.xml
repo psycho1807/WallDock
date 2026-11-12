@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Version Google Play : les mises à jour passent par le Play Store (pas d'installation par
+     l'appli) et le service d'accessibilité (détection d'activité) n'est pas inclus. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"
+        tools:node="remove" />
+
+    <application>
+        <service
+            android:name=".InteractionService"
+            tools:node="remove" />
+        <receiver
+            android:name=".UpdateReceiver"
+            tools:node="remove" />
+    </application>
+</manifest>

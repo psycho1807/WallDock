@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "app.walldock"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.walldock"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 33
         versionName = "0.16.1"
     }
@@ -31,6 +31,20 @@ android {
                 keyAlias = "walldock"
                 keyPassword = releasePassword
             }
+        }
+    }
+
+    // Deux versions : « github » (APK GitHub / Obtainium, complète, mises à jour automatiques)
+    // et « play » (Google Play : ni mise à jour par l'appli, ni service d'accessibilité).
+    flavorDimensions += "store"
+    productFlavors {
+        create("github") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY_STORE", "false")
+        }
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY_STORE", "true")
         }
     }
 

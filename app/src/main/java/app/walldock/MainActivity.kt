@@ -262,6 +262,10 @@ class MainActivity : Activity(), DashboardController {
         root.addView(screensaver, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
         setContentView(root)
+        // Android 13+ (obligatoire à partir d'Android 16) : retour géré par un rappel
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { handleBack() }
+        }
         ApiService.start(this)
     }
 
@@ -610,8 +614,10 @@ class MainActivity : Activity(), DashboardController {
     }
 
     @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // Mode kiosque : le bouton Retour ne quitte jamais l'appli
+    override fun onBackPressed() = handleBack()
+
+    /** Mode kiosque : le bouton Retour ne quitte jamais l'appli. */
+    private fun handleBack() {
         when {
             dockPanel.visibility == View.VISIBLE -> setDockVisible(false)
             web.canGoBack() -> web.goBack()

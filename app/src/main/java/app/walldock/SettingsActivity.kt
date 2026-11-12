@@ -155,7 +155,8 @@ class SettingsActivity : Activity() {
         column.addView(button(tr(R.string.settings_allow_overlay)) {
             open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         })
-        column.addView(button(tr(R.string.settings_enable_activity)) {
+        // Version Google Play : pas de service d'accessibilité
+        if (!BuildConfig.PLAY_STORE) column.addView(button(tr(R.string.settings_enable_activity)) {
             open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         })
         column.addView(button(tr(R.string.settings_exit_kiosk)) {
@@ -237,6 +238,7 @@ class SettingsActivity : Activity() {
         column.addView(button(tr(R.string.settings_test_jarvis)) { ApiService.instance?.jarvis?.talk() })
 
         column.addView(heading(tr(R.string.settings_updates), 18f))
+        if (BuildConfig.PLAY_STORE) column.addView(label(tr(R.string.updates_play)))
         updateText = TextView(this)
         updateText.setTextColor(0xFFB0C4E0.toInt())
         updateText.textSize = 14f
@@ -246,11 +248,14 @@ class SettingsActivity : Activity() {
         updateCheck.text = tr(R.string.settings_auto_update)
         updateCheck.setTextColor(Color.WHITE)
         updateCheck.isChecked = prefs.autoUpdate
-        column.addView(updateCheck)
-        column.addView(button(tr(R.string.settings_allow_install)) {
-            open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
-        })
-        column.addView(button(tr(R.string.settings_check_now)) { Updater.check(this, install = true) })
+        // Version Google Play : les mises à jour passent par le Play Store
+        if (!BuildConfig.PLAY_STORE) {
+            column.addView(updateCheck)
+            column.addView(button(tr(R.string.settings_allow_install)) {
+                open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            })
+            column.addView(button(tr(R.string.settings_check_now)) { Updater.check(this, install = true) })
+        }
 
         column.addView(heading(tr(R.string.backup_title), 18f))
         column.addView(label(tr(R.string.backup_help)))
@@ -419,8 +424,9 @@ class SettingsActivity : Activity() {
         statusText.text = listOf(
             (if (home) "✅ " else "⚠️ ") + tr(R.string.status_home) + (if (home) "" else "\n   " + tr(R.string.status_home_warning)),
             (if (overlay) tr(R.string.status_overlay_ok) else tr(R.string.status_overlay_missing)),
-            (if (activity) tr(R.string.status_activity_ok) else tr(R.string.status_activity_missing))
-        ).joinToString("\n")
+            if (BuildConfig.PLAY_STORE) null
+            else if (activity) tr(R.string.status_activity_ok) else tr(R.string.status_activity_missing)
+        ).filterNotNull().joinToString("\n")
     }
 
     private fun updateHaStatus() {

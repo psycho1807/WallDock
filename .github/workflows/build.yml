@@ -22,12 +22,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.10.2"
+          gradle-version: "8.14.3"
 
       # Pull requests (no access to the signing key): unsigned check build only
       - name: Build debug APK
         if: github.event_name == 'pull_request'
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleGithubDebug --no-daemon --stacktrace
 
       - name: Decrypt signing key
         if: github.event_name != 'pull_request'
@@ -47,10 +47,11 @@ jobs:
           WALLDOCK_KEY_PASSWORD: ${{ secrets.WALLDOCK_KEY_PASSWORD }}
         run: |
           export WALLDOCK_KEYSTORE="$RUNNER_TEMP/walldock.jks"
-          gradle assembleRelease --no-daemon --stacktrace
+          gradle assembleGithubRelease bundlePlayRelease --no-daemon --stacktrace
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          cp app/build/outputs/apk/release/app-release.apk "WallDock-$VERSION.apk"
+          cp app/build/outputs/apk/github/release/app-github-release.apk "WallDock-$VERSION.apk"
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab "WallDock-$VERSION-play.aab"
           rm -f "$RUNNER_TEMP/walldock.jks"
 
       - uses: actions/upload-artifact@v4
@@ -58,6 +59,13 @@ jobs:
         with:
           name: WallDock-apk
           path: WallDock-*.apk
+
+      # Google Play version (no self-update, no accessibility service): upload this AAB to the Play Console
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: WallDock-play-aab
+          path: WallDock-*-play.aab
 
       # A new release is published only when versionName changes
       - name: Publish GitHub release

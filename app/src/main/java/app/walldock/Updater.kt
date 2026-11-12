@@ -46,6 +46,11 @@ object Updater {
 
     /** Vérifie la dernière version ; si [install], la télécharge et l'installe. */
     fun check(context: Context, install: Boolean) {
+        // Version Google Play : c'est le Play Store qui met l'appli à jour
+        if (BuildConfig.PLAY_STORE) {
+            setStatus(tr(R.string.updates_play_status, BuildConfig.VERSION_NAME))
+            return
+        }
         val app = context.applicationContext
         executor.execute {
             if (busy) return@execute

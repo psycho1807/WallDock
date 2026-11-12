@@ -239,4 +239,6 @@
     <string name="settings_allowed_urls_hint">e.g. youtube.com, https://my-site.fr/page</string>
     <string name="entity_set_zoom">Dashboard zoom</string>
     <string name="settings_zoom">Dashboard zoom in % (e.g. 80 = more content on screen, 120 = bigger; 50 to 200)</string>
+    <string name="updates_play">This version comes from Google Play: updates are installed by the Play Store.</string>
+    <string name="updates_play_status">Google Play version %1$s (updates by the Play Store)</string>
 </resources>
