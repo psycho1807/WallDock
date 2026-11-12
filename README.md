@@ -85,26 +85,28 @@ Avec [Obtainium](https://github.com/ImranR98/Obtainium), WallDock s'installe et 
 
 Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser](https://www.fully-kiosk.com/) (novembre 2026). Fully est un produit mûr et très complet ; WallDock est fait pour Home Assistant avant tout.
 
-| | WallDock | Fully Kiosk (licence PLUS) |
-|---|---|---|
-| Prix | Gratuit, libre (GPL-3.0) | 8,90 € par tablette (paiement unique) |
-| Tableau de bord plein écran, écran toujours allumé | ✅ | ✅ |
-| Relance au démarrage | ✅ | ✅ |
-| Intégration HA | ✅ API native ESPHome, découverte auto, chiffrée | ✅ intégration officielle « Fully Kiosk Browser » |
-| Réglages modifiables depuis HA | ✅ | ✅ |
-| Détection de mouvement (caméra) | ✅ | ✅ (+ détection de visage, de son) |
-| Écran de veille | ✅ horloge ou page au choix | ✅ plus d'options (playlist, luminosité…) |
-| Lecteur multimédia, synthèse vocale, alertes plein écran | ✅ | ✅ (sons, TTS ; pas de popup d'alerte HA dédiée) |
-| **Assistant vocal (satellite Assist), mot d'activation, minuteurs** | ✅ | ❌ |
-| Dock d'applis + retour auto au tableau de bord | ✅ | ✅ (lanceur d'applis, réglable) |
-| Verrouillage kiosque complet (« device owner », blocage des boutons, de la barre d'état) | ❌ (barres masquées seulement) | ✅ |
-| Administration à distance (page web, Fully Cloud), MQTT, API REST | ❌ (tout passe par HA) | ✅ |
-| Planification veille/réveil intégrée | ✅ | ✅ |
-| Liste blanche d'adresses | ✅ | ✅ |
-| Navigateur complet (onglets, PDF…) | ❌ | ✅ |
-| Distribution | GitHub / Obtainium (Play Store prévu) | Play Store et site officiel |
+| | WallDock (gratuit) | WallDock Pro (bientôt) | Fully Kiosk (licence PLUS) |
+|---|---|---|---|
+| Prix | Gratuit, libre (GPL-3.0) | Prix à définir | 8,90 € par tablette (paiement unique) |
+| Tableau de bord plein écran, écran toujours allumé | ✅ | ✅ | ✅ |
+| Relance au démarrage | ✅ | ✅ | ✅ |
+| Intégration HA | ✅ API native ESPHome, découverte auto, chiffrée | ✅ + MQTT | ✅ intégration officielle « Fully Kiosk Browser » |
+| Réglages modifiables depuis HA | ✅ | ✅ | ✅ |
+| Détection de mouvement (caméra) | ✅ | ✅ | ✅ (+ détection de visage, de son) |
+| Écran de veille | ✅ horloge ou page au choix | ✅ | ✅ plus d'options (playlist, luminosité…) |
+| Lecteur multimédia, synthèse vocale, alertes plein écran | ✅ | ✅ | ✅ (sons, TTS ; pas de popup d'alerte HA dédiée) |
+| **Assistant vocal (satellite Assist), mot d'activation, minuteurs** | ✅ | ✅ + choix du mot, mot personnalisé | ❌ |
+| Dock d'applis + retour auto au tableau de bord | ✅ | ✅ | ✅ (lanceur d'applis, réglable) |
+| Verrouillage kiosque complet (« device owner », blocage des boutons, de la barre d'état) | ❌ (barres masquées seulement) | ✅ | ✅ |
+| Administration à distance (page web, Fully Cloud), MQTT, API REST | ❌ (tout passe par HA) | ✅ page web, API REST, MQTT (pas de cloud) | ✅ |
+| Planification veille/réveil intégrée | ✅ | ✅ | ✅ |
+| Liste blanche d'adresses | ✅ | ✅ | ✅ |
+| Navigateur complet (onglets, PDF…) | ❌ | ✅ onglets, lecteur PDF | ✅ |
+| Interphone entre tablettes | ❌ | ✅ | ❌ |
+| Écran de la tablette visible et commandable depuis HA | capture seulement | ✅ en direct, clics et gestes | ✅ capture ; commande à distance via Fully Remote Admin |
+| Distribution | GitHub / Obtainium (Play Store prévu) | Bientôt | Play Store et site officiel |
 
-En résumé : si vous voulez un écran mural Home Assistant avec un assistant vocal, gratuit, WallDock est fait pour ça. Si vous avez besoin d'un verrouillage strict (tablette en accès public), d'une gestion de flotte ou d'un navigateur très configurable, Fully reste la référence.
+En résumé : si vous voulez un écran mural Home Assistant avec un assistant vocal, gratuit, WallDock est fait pour ça. Si vous avez besoin d'un verrouillage strict (tablette en accès public), d'administration à distance ou d'onglets, la future **WallDock Pro** les apportera (avec en plus l'interphone entre tablettes et l'écran de la tablette commandable depuis HA) ; d'ici là, Fully reste la référence.
 
 ## Soutenir le projet
 
