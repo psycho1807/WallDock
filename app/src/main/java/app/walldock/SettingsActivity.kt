@@ -13,6 +13,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.os.Build
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -296,6 +297,22 @@ class SettingsActivity : Activity() {
                 open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
             })
             column.addView(button(tr(R.string.settings_check_now)) { Updater.check(this, install = true) })
+        }
+
+        // Réveils
+        column.addView(heading(tr(R.string.alarm_section), 18f))
+        column.addView(label(tr(R.string.alarm_help)))
+        alarmList = LinearLayout(this)
+        alarmList.orientation = LinearLayout.VERTICAL
+        column.addView(alarmList)
+        refreshAlarms()
+        column.addView(button(tr(R.string.alarm_add)) { addAlarm() })
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            getSystemService(android.app.AlarmManager::class.java)?.canScheduleExactAlarms() == false
+        ) {
+            column.addView(button(tr(R.string.alarm_exact)) {
+                open(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
+            })
         }
 
         column.addView(heading(tr(R.string.backup_title), 18f))
@@ -604,6 +621,81 @@ class SettingsActivity : Activity() {
         view.isAllCaps = false
         view.setOnClickListener { action() }
         return view
+    }
+
+    // ---- Réveils ----
+
+    private lateinit var alarmList: LinearLayout
+
+    private fun refreshAlarms() {
+        alarmList.removeAllViews()
+        val alarms = Alarms.list(this)
+        if (alarms.isEmpty()) alarmList.addView(label(tr(R.string.alarm_empty)))
+        for (alarm in alarms) {
+            val row = LinearLayout(this)
+            row.orientation = LinearLayout.HORIZONTAL
+            row.gravity = android.view.Gravity.CENTER_VERTICAL
+            val check = CheckBox(this)
+            check.isChecked = alarm.enabled
+            check.setTextColor(Color.WHITE)
+            check.textSize = 18f
+            check.text = buildString {
+                append(alarm.time).append("  ·  ").append(Alarms.daysLabel(alarm.days))
+                if (alarm.label.isNotBlank()) append("  ·  ").append(alarm.label)
+                if (alarm.sunrise) append("  ☀")
+            }
+            check.setOnCheckedChangeListener { _, on ->
+                val all = Alarms.list(this)
+                all.firstOrNull { it.id == alarm.id }?.enabled = on
+                Alarms.save(this, all)
+                ApiService.instance?.reportNextAlarm()
+            }
+            row.addView(check, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            val delete = Button(this)
+            delete.text = "✕"
+            delete.setOnClickListener {
+                Alarms.save(this, Alarms.list(this).filterNot { it.id == alarm.id })
+                ApiService.instance?.reportNextAlarm()
+                refreshAlarms()
+            }
+            row.addView(delete)
+            alarmList.addView(row)
+        }
+    }
+
+    private fun addAlarm() {
+        android.app.TimePickerDialog(this, { _, hour, minute ->
+            val names = tr(R.string.alarm_day_names_long).split(",").toTypedArray()
+            val chosen = BooleanArray(7) { it < 5 }
+            AlertDialog.Builder(this)
+                .setTitle(tr(R.string.alarm_days_title, "%02d:%02d".format(hour, minute)))
+                .setMultiChoiceItems(names, chosen) { _, which, on -> chosen[which] = on }
+                .setPositiveButton(tr(R.string.alarm_next_step)) { _, _ ->
+                    var days = 0
+                    chosen.forEachIndexed { i, on -> if (on) days = days or (1 shl i) }
+                    val nameField = EditText(this)
+                    nameField.hint = tr(R.string.alarm_name_hint)
+                    val sunrise = CheckBox(this)
+                    sunrise.text = tr(R.string.alarm_sunrise, Alarms.SUNRISE_MINUTES)
+                    val box = LinearLayout(this)
+                    box.orientation = LinearLayout.VERTICAL
+                    box.setPadding(dp(20), dp(8), dp(20), 0)
+                    box.addView(nameField)
+                    box.addView(sunrise)
+                    AlertDialog.Builder(this)
+                        .setTitle(tr(R.string.alarm_add))
+                        .setView(box)
+                        .setPositiveButton("OK") { _, _ ->
+                            Alarms.add(this, hour, minute, days, nameField.text.toString().trim(), sunrise.isChecked)
+                            ApiService.instance?.reportNextAlarm()
+                            refreshAlarms()
+                        }
+                        .setNegativeButton(tr(R.string.cancel), null)
+                        .show()
+                }
+                .setNegativeButton(tr(R.string.cancel), null)
+                .show()
+        }, 7, 0, true).show()
     }
 
     companion object {

@@ -59,6 +59,18 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         }
     }
     private val autoStop = Runnable { stopRinging() }
+    /** Titre de la sonnerie (minuteur ou réveil) et action « répéter » (réveils seulement). */
+    private var ringTitle = ""
+    private var snoozeAction: (() -> Unit)? = null
+
+    /** Réveil : sonnerie plein écran avec « Arrêter » et « Répéter dans 10 min ». */
+    fun ringAlarm(name: String, snooze: () -> Unit) {
+        if (ringView == null) {
+            ringTitle = tr(R.string.alarm_title)
+            snoozeAction = snooze
+        }
+        ring(name, 10 * 60_000L)
+    }
 
     // Événements de HA (VoiceAssistantTimerEvent)
     fun onEvent(type: Int, id: String, name: String, totalSeconds: Int, secondsLeft: Int, active: Boolean) {
@@ -76,6 +88,10 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
             EVENT_FINISHED -> {
                 val timer = timers.remove(id)
                 refreshBar()
+                if (ringView == null) {
+                    ringTitle = tr(R.string.timer_finished)
+                    snoozeAction = null
+                }
                 ring(timer?.name ?: name.ifBlank { formatName(totalSeconds) })
             }
         }
@@ -169,7 +185,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
 
     // ---- Sonnerie de fin ----
 
-    private fun ring(name: String) {
+    private fun ring(name: String, autoStopMs: Long = 2 * 60_000L) {
         wakeUp()
         ringing.add(name)
         if (ringView == null) showRingView()
@@ -177,7 +193,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         if (player == null) startSound()
         isSoundPlaying = true
         handler.removeCallbacks(autoStop)
-        handler.postDelayed(autoStop, 2 * 60_000L)
+        handler.postDelayed(autoStop, autoStopMs)
     }
 
     private fun showRingView() {
@@ -194,7 +210,7 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         icon.gravity = Gravity.CENTER
         column.addView(icon)
         val title = TextView(context)
-        title.text = tr(R.string.timer_finished)
+        title.text = ringTitle.ifBlank { tr(R.string.timer_finished) }
         title.textSize = 26f
         title.letterSpacing = 0.2f
         title.setTextColor(0xFFFFB347.toInt())
@@ -215,6 +231,20 @@ class TimerOverlay(private val context: Context, private val wakeUp: () -> Unit)
         val stopParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         stopParams.topMargin = context.dp(32)
         column.addView(stop, stopParams)
+        val snooze = snoozeAction
+        if (snooze != null) {
+            val again = Button(context)
+            again.text = tr(R.string.alarm_snooze)
+            again.isAllCaps = false
+            again.textSize = 20f
+            again.setOnClickListener {
+                stopRinging()
+                snooze()
+            }
+            val againParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+            againParams.topMargin = context.dp(16)
+            column.addView(again, againParams)
+        }
         frame.addView(column, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.CENTER))
 
         val params = WindowManager.LayoutParams(

@@ -197,7 +197,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         setAutoUpdate, setHandle, setUrl,
         motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake,
         batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot,
-        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setListenScreenOff, setZoom
+        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setListenScreenOff, nextAlarm, setZoom
     )
 
     /**
@@ -208,6 +208,7 @@ class ApiService : Service(), EsphomeServer.Handler {
     private var lastNight: Boolean? = null
     private val scheduleCheck = object : Runnable {
         override fun run() {
+            checkAlarms()
             val prefs = Prefs(this@ApiService)
             if (prefs.scheduleEnabled) {
                 val night = isNight(prefs.sleepTime, prefs.wakeTime)
@@ -218,6 +219,63 @@ class ApiService : Service(), EsphomeServer.Handler {
             }
             main.postDelayed(this, 20_000)
         }
+    }
+
+    // ---- Réveils ----
+
+    private val nextAlarm = Entity(Entity.Kind.TEXT_SENSOR, "prochain_reveil", tr(R.string.entity_next_alarm))
+        .icon("mdi:alarm")
+    private var sunriseTarget = -1f
+    private var sunriseRestore = -1f
+    private var sunriseStart = 0L
+    private val sunriseStep = object : Runnable {
+        override fun run() {
+            val elapsed = System.currentTimeMillis() - sunriseStart
+            val total = Alarms.SUNRISE_MINUTES * 60_000f
+            if (elapsed >= total) return
+            AppState.brightness = (1f + (sunriseTarget - 1f) * (elapsed / total)).coerceIn(1f, 100f)
+            AppState.controller?.applyScreen()
+            main.postDelayed(this, 15_000)
+        }
+    }
+
+    /** Réveils à faire sonner et levers de soleil à lancer (appelé toutes les 20 s et par Android). */
+    fun checkAlarms() = main.post {
+        val (ringing, sunrise) = Alarms.due(this)
+        if (sunrise != null) startSunrise()
+        for (alarm in ringing) ringAlarm(alarm.label.ifBlank { alarm.time })
+        reportNextAlarm()
+    }
+
+    private fun startSunrise() {
+        sunriseRestore = AppState.brightness
+        sunriseTarget = if (AppState.brightness < 0) 100f else AppState.brightness.coerceAtLeast(30f)
+        sunriseStart = System.currentTimeMillis()
+        if (!AppState.screenOn) setScreen(true) else wakeUp()
+        main.removeCallbacks(sunriseStep)
+        main.post(sunriseStep)
+    }
+
+    private fun ringAlarm(label: String) {
+        main.removeCallbacks(sunriseStep)
+        if (sunriseStart > 0) {
+            AppState.brightness = sunriseRestore
+            sunriseStart = 0
+        }
+        if (!AppState.screenOn) setScreen(true) else AppState.controller?.applyScreen()
+        jarvis?.timers?.ringAlarm(label) {
+            // Répéter dans 10 minutes
+            main.postDelayed({ ringAlarm(label) }, 10 * 60_000L)
+        }
+    }
+
+    fun reportNextAlarm() {
+        val next = Alarms.upcoming(this)
+        val text = if (next == null) tr(R.string.alarm_none) else {
+            val time = java.text.SimpleDateFormat("EEE HH:mm", java.util.Locale.getDefault()).format(java.util.Date(next.second))
+            if (next.first.label.isBlank()) time else "$time · ${next.first.label}"
+        }
+        server?.setState(nextAlarm, text)
     }
 
     private fun minutes(time: String): Int? {
@@ -322,9 +380,14 @@ class ApiService : Service(), EsphomeServer.Handler {
         .arg("camera", UserService.ARG_STRING)
         .arg("titre", UserService.ARG_STRING)
         .arg("secondes", UserService.ARG_INT)
+    // Réveils : heure « 07:30 », jours « lun,mar,mer » / « semaine » / « tous » / vide = une fois
+    private val addAlarmService = UserService("ajouter_reveil")
+        .arg("heure", UserService.ARG_STRING).arg("jours", UserService.ARG_STRING)
+        .arg("nom", UserService.ARG_STRING).arg("lever_de_soleil", UserService.ARG_BOOL)
+    private val deleteAlarmService = UserService("supprimer_reveil").arg("nom", UserService.ARG_STRING)
     private val services = listOf(
         speakService, openPageService, openAppService, showAlertService, closeAlertService, playSoundService,
-        showCameraService
+        showCameraService, addAlarmService, deleteAlarmService
     )
     private lateinit var cameraOverlay: CameraOverlay
     /** Caméra HA demandée (entity_id), en attente de son adresse : (titre, secondes). */
@@ -422,6 +485,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.postDelayed(micReport, 5_000)
         main.postDelayed(idleReport, 3_000)
         main.postDelayed(scheduleCheck, 10_000)
+        Alarms.schedule(this)
         main.postDelayed(wifiReport, 5_000)
         alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
         cameraOverlay = CameraOverlay(this) { server?.setState(alertShown, alertOverlay.isShowing) }
@@ -879,6 +943,24 @@ class ApiService : Service(), EsphomeServer.Handler {
                     cameraOverlay.close(notify = false)
                     pendingCamera = null
                     server?.setState(alertShown, false)
+                }
+                service === addAlarmService -> {
+                    val time = (args["heure"] as? String ?: "").trim()
+                    val m = minutes(time)
+                    if (m != null) {
+                        Alarms.add(this, m / 60, m % 60, Alarms.parseDays(args["jours"] as? String ?: ""),
+                            (args["nom"] as? String ?: "").trim(), args["lever_de_soleil"] as? Boolean ?: false)
+                        reportNextAlarm()
+                    }
+                }
+                service === deleteAlarmService -> {
+                    val name = (args["nom"] as? String ?: "").trim()
+                    val all = Alarms.list(this)
+                    // Par nom, par heure (« 07:30 »), ou « tous »
+                    val kept = if (name.equals("tous", true) || name.equals("all", true)) mutableListOf()
+                    else all.filterNot { it.label.equals(name, true) || it.time == name }
+                    Alarms.save(this, kept)
+                    reportNextAlarm()
                 }
                 service === showCameraService -> showCamera(
                     args["camera"] as? String ?: "",

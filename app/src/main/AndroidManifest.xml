@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Relancer WallDock quand la tablette redémarre (coupure de courant) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Réveils à l'heure exacte (accordé par l'utilisateur ; sinon WallDock vérifie lui-même) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Option : régler la luminosité du système (autorisation donnée par l'utilisateur) -->
     <uses-permission
         android:name="android.permission.WRITE_SETTINGS"
@@ -85,6 +87,10 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="home_assistant_device_api" />
         </service>
+
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".BootReceiver"

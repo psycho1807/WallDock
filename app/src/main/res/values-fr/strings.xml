@@ -253,4 +253,22 @@
     <string name="photos_folder_unavailable">Choix de dossier indisponible sur cette tablette</string>
     <string name="photos_seconds">Secondes par photo</string>
     <string name="photos_none">Aucune photo trouvée pour l’écran de veille (vérifiez les réglages Immich ou le dossier)</string>
+    <string name="alarm_section">Réveils</string>
+    <string name="alarm_help">Les réveils sonnent sur la tablette elle-même, même sans Home Assistant ni réseau. Depuis HA : actions « ajouter_reveil » (heure, jours, nom, lever_de_soleil) et « supprimer_reveil » (nom, heure ou « tous »).</string>
+    <string name="alarm_add">Ajouter un réveil</string>
+    <string name="alarm_empty">Aucun réveil</string>
+    <string name="alarm_exact">Autoriser les réveils à l’heure exacte (Android)</string>
+    <string name="alarm_title">RÉVEIL</string>
+    <string name="alarm_snooze">Répéter dans 10 min</string>
+    <string name="alarm_once">une fois</string>
+    <string name="alarm_every_day">tous les jours</string>
+    <string name="alarm_weekdays">en semaine</string>
+    <string name="alarm_day_names">lun,mar,mer,jeu,ven,sam,dim</string>
+    <string name="alarm_day_names_long">Lundi,Mardi,Mercredi,Jeudi,Vendredi,Samedi,Dimanche</string>
+    <string name="alarm_days_title">%1$s — quels jours ? (aucun = une fois)</string>
+    <string name="alarm_next_step">Suivant</string>
+    <string name="alarm_name_hint">Nom (facultatif)</string>
+    <string name="alarm_sunrise">Lever de soleil : l’écran s’éclaire peu à peu %1$d minutes avant</string>
+    <string name="alarm_none">aucun</string>
+    <string name="entity_next_alarm">Prochain réveil</string>
 </resources>

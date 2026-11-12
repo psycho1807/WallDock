@@ -254,4 +254,22 @@
     <string name="photos_folder_unavailable">Folder picker not available on this tablet</string>
     <string name="photos_seconds">Seconds per photo</string>
     <string name="photos_none">No photo found for the screensaver (check the Immich settings or the folder)</string>
+    <string name="alarm_section">Alarms</string>
+    <string name="alarm_help">Alarms ring on the tablet itself, even without Home Assistant or network. From HA: actions “ajouter_reveil” (heure, jours, nom, lever_de_soleil) and “supprimer_reveil” (nom, time or “tous”).</string>
+    <string name="alarm_add">Add an alarm</string>
+    <string name="alarm_empty">No alarm</string>
+    <string name="alarm_exact">Allow alarms at the exact time (Android)</string>
+    <string name="alarm_title">ALARM</string>
+    <string name="alarm_snooze">Snooze 10 min</string>
+    <string name="alarm_once">once</string>
+    <string name="alarm_every_day">every day</string>
+    <string name="alarm_weekdays">weekdays</string>
+    <string name="alarm_day_names">Mon,Tue,Wed,Thu,Fri,Sat,Sun</string>
+    <string name="alarm_day_names_long">Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday</string>
+    <string name="alarm_days_title">%1$s — which days? (none = once)</string>
+    <string name="alarm_next_step">Next</string>
+    <string name="alarm_name_hint">Name (optional)</string>
+    <string name="alarm_sunrise">Sunrise: the screen lights up gradually %1$d minutes before</string>
+    <string name="alarm_none">none</string>
+    <string name="entity_next_alarm">Next alarm</string>
 </resources>
