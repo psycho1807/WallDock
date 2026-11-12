@@ -115,6 +115,41 @@ public final class EsphomeServer {
         public int voiceFeatures = 0;
     }
 
+    /** Où l'appareil garde sa clé de chiffrement (32 octets, ou null : pas de chiffrement). */
+    public interface KeyStore {
+        byte[] loadKey();
+        void saveKey(byte[] key);
+    }
+
+    private static final byte[] ZERO_PSK = new byte[32];
+    private volatile KeyStore keyStore;
+    private volatile byte[] noiseKey;
+
+    /** Active le chiffrement Noise : la clé est lue maintenant, et HA peut la (re)définir. */
+    public void setKeyStore(KeyStore store) {
+        keyStore = store;
+        byte[] key = store != null ? store.loadKey() : null;
+        noiseKey = key != null && key.length == 32 ? key : null;
+    }
+
+    /** Vrai si une clé est en place : seules les connexions chiffrées avec elle sont acceptées. */
+    public boolean isEncrypted() {
+        return noiseKey != null;
+    }
+
+    /** Nom du protocole, pour l'annonce mDNS (api_encryption). */
+    public static final String NOISE_PROTOCOL = NoiseSession.PROTOCOL;
+
+    /** Nouvelle clé (ou null pour revenir sans chiffrement) : les clients sont déconnectés. */
+    public void changeKey(byte[] key) {
+        KeyStore store = keyStore;
+        if (store != null) store.saveKey(key);
+        noiseKey = key;
+        for (Client client : clients) {
+            client.trySend(DISCONNECT_REQUEST, new byte[0]);
+        }
+    }
+
     public static final int DEFAULT_PORT = 6053;
 
     // Types de messages (api.proto d'ESPHome)
@@ -153,6 +188,8 @@ public final class EsphomeServer {
     private static final int LIST_MEDIA_PLAYER = 63;
     private static final int LIST_CAMERA = 43;
     private static final int LIST_TEXT = 97;
+    private static final int NOISE_SET_KEY_REQUEST = 124;
+    private static final int NOISE_SET_KEY_RESPONSE = 125;
     private static final int TEXT_STATE = 98;
     private static final int TEXT_COMMAND = 99;
     private static final int CAMERA_IMAGE = 44;
@@ -384,21 +421,102 @@ public final class EsphomeServer {
             this.out = socket.getOutputStream();
         }
 
+        /** Session chiffrée (null : connexion en clair). */
+        private volatile NoiseSession noise;
+
         void run() {
             try {
+                int preamble = in.read();
+                if (preamble < 0) return;
+                if (preamble == 0x01) {
+                    runEncrypted();
+                    return;
+                }
+                if (preamble != 0x00) return;
+                if (noiseKey != null) {
+                    // Chiffrement en place : on refuse le clair, ce qui fait demander la clé par HA
+                    rejectPlaintext();
+                    return;
+                }
                 while (running) {
-                    int preamble = in.read();
-                    if (preamble < 0) break;
-                    if (preamble != 0) break; // 0x01 = connexion chiffrée (Noise) : non gérée
                     int length = (int) readVarint();
                     int type = (int) readVarint();
                     byte[] payload = readFully(length);
                     if (!handle(type, payload)) break;
+                    int next = in.read();
+                    if (next != 0x00) break;
                 }
             } catch (IOException ignored) {
             } finally {
                 close();
             }
+        }
+
+        private void runEncrypted() throws IOException {
+            byte[] key = noiseKey != null ? noiseKey : ZERO_PSK;
+            // 1. « Bonjour » du client (trame vide), 2. premier message de la poignée de main
+            readNoiseFrame(false);
+            byte[] handshake = readNoiseFrame(true);
+            if (handshake.length == 0 || handshake[0] != 0) return;
+            NoiseSession session = new NoiseSession(key);
+            String mac = info.macAddress.replace(":", "").toLowerCase(java.util.Locale.ROOT);
+            ByteArrayOutputStream hello = new ByteArrayOutputStream();
+            hello.write(0x01);
+            hello.write(info.name.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            hello.write(0);
+            hello.write(mac.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            hello.write(0);
+            writeNoiseFrame(hello.toByteArray());
+            if (!session.readHandshake(java.util.Arrays.copyOfRange(handshake, 1, handshake.length))) {
+                byte[] reason = "Handshake MAC failure".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+                byte[] reject = new byte[reason.length + 1];
+                reject[0] = 0x01;
+                System.arraycopy(reason, 0, reject, 1, reason.length);
+                writeNoiseFrame(reject);
+                return;
+            }
+            byte[] reply = session.writeHandshake();
+            byte[] frame = new byte[reply.length + 1];
+            System.arraycopy(reply, 0, frame, 1, reply.length);
+            writeNoiseFrame(frame);
+            noise = session;
+            while (running) {
+                byte[] data = session.decrypt(readNoiseFrame(true));
+                if (data == null || data.length < 4) break;
+                int type = ((data[0] & 0xff) << 8) | (data[1] & 0xff);
+                int length = ((data[2] & 0xff) << 8) | (data[3] & 0xff);
+                if (length > data.length - 4) break;
+                if (!handle(type, java.util.Arrays.copyOfRange(data, 4, 4 + length))) break;
+            }
+        }
+
+        /** Lit une trame chiffrée [0x01][longueur sur 2 octets][données]. */
+        private byte[] readNoiseFrame(boolean readPreamble) throws IOException {
+            if (readPreamble && in.read() != 0x01) throw new EOFException();
+            int hi = in.read();
+            int lo = in.read();
+            if (hi < 0 || lo < 0) throw new EOFException();
+            return readFully((hi << 8) | lo);
+        }
+
+        private void writeNoiseFrame(byte[] payload) throws IOException {
+            byte[] frame = new byte[payload.length + 3];
+            frame[0] = 0x01;
+            frame[1] = (byte) (payload.length >> 8);
+            frame[2] = (byte) payload.length;
+            System.arraycopy(payload, 0, frame, 3, payload.length);
+            synchronized (out) {
+                out.write(frame);
+                out.flush();
+            }
+        }
+
+        private void rejectPlaintext() throws IOException {
+            byte[] reason = "Bad indicator byte".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+            byte[] reject = new byte[reason.length + 1];
+            reject[0] = 0x01;
+            System.arraycopy(reason, 0, reject, 1, reason.length);
+            writeNoiseFrame(reject);
         }
 
         /** Renvoie faux pour fermer la connexion. */
@@ -431,6 +549,31 @@ public final class EsphomeServer {
                     for (UserService service : services) send(LIST_SERVICES, describe(service));
                     send(LIST_ENTITIES_DONE, new byte[0]);
                     return true;
+                case NOISE_SET_KEY_REQUEST: {
+                    Map<Integer, Object> f = Proto.read(payload);
+                    byte[] key = null;
+                    boolean ok;
+                    try {
+                        String text = new String(Proto.getBytes(f, 1), java.nio.charset.StandardCharsets.US_ASCII).trim();
+                        if (!text.isEmpty()) key = java.util.Base64.getDecoder().decode(text);
+                        ok = keyStore != null && (key == null || key.length == 32);
+                    } catch (IllegalArgumentException e) {
+                        ok = false;
+                    }
+                    send(NOISE_SET_KEY_RESPONSE, new Proto.Writer().bool(1, ok).bytes());
+                    if (ok) {
+                        final byte[] newKey = key;
+                        // Comme ESPHome : on laisse partir la réponse, puis on déconnecte tout le monde
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(150);
+                            } catch (InterruptedException ignored) {
+                            }
+                            changeKey(newKey);
+                        }, "walldock-noise-key").start();
+                    }
+                    return true;
+                }
                 case TEXT_COMMAND: {
                     Map<Integer, Object> f = Proto.read(payload);
                     Entity entity = find(Proto.getInt(f, 1), Entity.Kind.TEXT);
@@ -604,6 +747,8 @@ public final class EsphomeServer {
                 .string(13, info.friendlyName)
                 .string(16, info.suggestedArea)
                 .varint(17, info.voiceFeatures)
+                .bool(19, keyStore != null)   // sait recevoir et garder une clé (HA la crée tout seul)
+                .bool(26, keyStore != null)   // accepte la clé « zéro » pour la recevoir chiffrée
                 .bytes();
         }
 
@@ -739,6 +884,27 @@ public final class EsphomeServer {
         }
 
         private void send(int type, byte[] payload) throws IOException {
+            NoiseSession session = noise;
+            if (session != null) {
+                byte[] plain = new byte[payload.length + 4];
+                plain[0] = (byte) (type >> 8);
+                plain[1] = (byte) type;
+                plain[2] = (byte) (payload.length >> 8);
+                plain[3] = (byte) payload.length;
+                System.arraycopy(payload, 0, plain, 4, payload.length);
+                // Chiffrement et envoi dans le même ordre (le compteur de nonces doit suivre l'ordre d'envoi)
+                synchronized (out) {
+                    byte[] data = session.encrypt(plain);
+                    byte[] frame = new byte[data.length + 3];
+                    frame[0] = 0x01;
+                    frame[1] = (byte) (data.length >> 8);
+                    frame[2] = (byte) data.length;
+                    System.arraycopy(data, 0, frame, 3, data.length);
+                    out.write(frame);
+                    out.flush();
+                }
+                return;
+            }
             ByteArrayOutputStream frame = new ByteArrayOutputStream(payload.length + 8);
             frame.write(0);
             Proto.writeVarint(frame, payload.length);

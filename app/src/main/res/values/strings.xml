@@ -189,4 +189,8 @@
     <string name="sens_short_high">High</string>
     <string name="sens_short_very_high">Very high</string>
     <string name="handle_hidden_short">Hidden (swipe from the right edge)</string>
+    <string name="encryption_on">🔒 Encrypted connection (key created by Home Assistant)</string>
+    <string name="encryption_off">🔓 Connection not encrypted yet: Home Assistant will create the key on its own at the next connection</string>
+    <string name="encryption_reset">Reset encryption</string>
+    <string name="encryption_reset_confirm">Remove the encryption key? Home Assistant will then ask you to confirm in Settings → Devices &amp; services, or will create a new key on its own.</string>
 </resources>

@@ -1,6 +1,7 @@
 package app.walldock
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -125,6 +126,16 @@ class SettingsActivity : Activity() {
         haStatusText.textSize = 14f
         haStatusText.setLineSpacing(0f, 1.3f)
         column.addView(haStatusText)
+        column.addView(button(tr(R.string.encryption_reset)) {
+            AlertDialog.Builder(this)
+                .setMessage(tr(R.string.encryption_reset_confirm))
+                .setPositiveButton(tr(R.string.encryption_reset)) { _, _ ->
+                    ApiService.instance?.resetEncryption()
+                    updateHaStatus()
+                }
+                .setNegativeButton(tr(R.string.cancel), null)
+                .show()
+        })
 
         column.addView(heading("Jarvis", 18f))
         jarvisText = TextView(this)
@@ -344,6 +355,10 @@ class SettingsActivity : Activity() {
             service == null -> tr(R.string.ha_service_stopped)
             service.connectedClients() > 0 -> tr(R.string.ha_connected, service.friendlyName, service.deviceName)
             else -> tr(R.string.ha_waiting, service.friendlyName, ip)
+        } + if (service != null && error == null) {
+            "\n" + tr(if (service.isEncrypted) R.string.encryption_on else R.string.encryption_off)
+        } else {
+            ""
         }
     }
 

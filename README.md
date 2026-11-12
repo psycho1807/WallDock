@@ -18,7 +18,8 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Mises à jour automatiques depuis les releases GitHub (désactivables).
 - Sauvegarde et restauration des réglages dans un fichier.
 
-**Intégration Home Assistant** (API native ESPHome, découverte automatique)
+**Intégration Home Assistant** (API native ESPHome, découverte automatique, **connexion chiffrée**)
+- Chiffrement ESPHome (Noise) : à la première connexion, Home Assistant crée une clé et l'envoie à la tablette ; ensuite, seule la connexion chiffrée avec cette clé est acceptée. Rien à saisir. « Réinitialiser le chiffrement » dans les réglages retire la clé.
 - Capteurs : batterie, en charge, appli ouverte, alerte affichée, mise à jour, état de Jarvis.
 - Commandes : écran, luminosité, volume, ouvrir une appli ou une page, revenir au tableau de bord, recharger.
 - Actions : `parler`, `jouer_son`, `ouvrir_page`, `ouvrir_appli`, `afficher_alerte` (popup plein écran avec compte à rebours), `afficher_camera` (une caméra en plein écran : `camera: camera.sonnette` pour son image, ou une page du tableau de bord comme `/sonnette/live` pour la vidéo en direct), `fermer_alerte`.
@@ -73,7 +74,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 **WallDock** turns an Android tablet into a Home Assistant wall panel:
 
 - Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, clock screensaver, offline fallback screen, automatic updates from GitHub releases.
-- Native ESPHome API integration (auto-discovered): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
+- Native ESPHome API integration (auto-discovered, **encrypted**: Home Assistant creates the Noise key on its own at the first connection): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.
 - **Media player** entity: music, radio, Music Assistant, announcements, pause and volume.
 

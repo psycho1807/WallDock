@@ -58,6 +58,22 @@ class Prefs(context: Context) {
         set(value) = sp.edit().putBoolean(KEY_JARVIS_WAKE, value).apply()
 
     /** « Hey Jarvis » reconnu par la tablette elle-même (sinon par openWakeWord dans HA). */
+    /** Clé de chiffrement de l'API (32 octets), créée par Home Assistant ; null : pas de chiffrement. */
+    var noiseKey: ByteArray?
+        get() = sp.getString(KEY_NOISE, null)?.let {
+            try {
+                android.util.Base64.decode(it, android.util.Base64.NO_WRAP).takeIf { k -> k.size == 32 }
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+        set(value) {
+            val edit = sp.edit()
+            if (value == null) edit.remove(KEY_NOISE)
+            else edit.putString(KEY_NOISE, android.util.Base64.encodeToString(value, android.util.Base64.NO_WRAP))
+            edit.commit()
+        }
+
     /** Sensibilité de « Hey Jarvis » : 0 normale, 1 élevée, 2 très élevée. */
     var jarvisSensitivity: Int
         get() = sp.getInt(KEY_JARVIS_SENSITIVITY, 0)
@@ -88,6 +104,7 @@ class Prefs(context: Context) {
         private const val KEY_JARVIS_WAKE = "jarvis_wake_word"
         private const val KEY_JARVIS_ON_DEVICE = "jarvis_on_device"
         private const val KEY_JARVIS_SENSITIVITY = "jarvis_sensitivity"
+        private const val KEY_NOISE = "api_noise_key"
         private const val KEY_AUTO_UPDATE = "auto_update"
         private const val KEY_HANDLE = "handle_position"
         private const val KEY_SAVER = "screensaver_enabled"

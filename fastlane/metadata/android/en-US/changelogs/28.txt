@@ -1,0 +1,1 @@
+• Encrypted connection with Home Assistant (ESPHome Noise encryption): HA creates the key on its own, no other device on the network can control the tablet anymore

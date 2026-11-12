@@ -1,0 +1,1 @@
+• Connexion chiffrée avec Home Assistant (chiffrement ESPHome Noise) : HA crée la clé tout seul, plus aucun autre appareil du réseau ne peut piloter la tablette

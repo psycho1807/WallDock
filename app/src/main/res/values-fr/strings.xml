@@ -188,4 +188,8 @@
     <string name="sens_short_high">Élevée</string>
     <string name="sens_short_very_high">Très élevée</string>
     <string name="handle_hidden_short">Cachée (glisser depuis le bord droit)</string>
+    <string name="encryption_on">🔒 Connexion chiffrée (clé créée par Home Assistant)</string>
+    <string name="encryption_off">🔓 Connexion pas encore chiffrée : Home Assistant créera la clé tout seul à la prochaine connexion</string>
+    <string name="encryption_reset">Réinitialiser le chiffrement</string>
+    <string name="encryption_reset_confirm">Retirer la clé de chiffrement ? Home Assistant demandera alors de confirmer dans Paramètres → Appareils et services, ou recréera une clé tout seul.</string>
 </resources>

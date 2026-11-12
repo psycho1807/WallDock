@@ -22,7 +22,9 @@ object SettingsBackup {
     private val FILES = listOf("wakeword/voices.bin", "wakeword/verifier.bin")
     /** États internes propres à la tablette, à ne pas recopier. */
     private val SKIPPED = setOf(
-        "wakeword_load_in_progress", "wakeword_crashed", "stopword_load_in_progress", "stopword_crashed"
+        "wakeword_load_in_progress", "wakeword_crashed", "stopword_load_in_progress", "stopword_crashed",
+        // La clé de chiffrement est propre au couple tablette / Home Assistant
+        "api_noise_key"
     )
 
     fun startExport(activity: Activity) {

@@ -239,6 +239,17 @@ class ApiService : Service(), EsphomeServer.Handler {
         refreshOpenTargets()
         val srv = EsphomeServer(info, entities, services, this, EsphomeServer.DEFAULT_PORT)
         server = srv
+        // Chiffrement de l'API (Noise) : HA crée et envoie la clé tout seul, elle est gardée ici
+        srv.setKeyStore(object : EsphomeServer.KeyStore {
+            override fun loadKey(): ByteArray? = Prefs(this@ApiService).noiseKey
+            override fun saveKey(key: ByteArray?) {
+                Prefs(this@ApiService).noiseKey = key
+                main.post {
+                    unregisterMdns()
+                    registerMdns(mac)
+                }
+            }
+        })
         val assistant = Jarvis(this, srv) { wakeUp() }
         val tabletPlayer = TabletPlayer(this) { server?.setState(mediaEntity, it) }
         mediaPlayer = tabletPlayer
@@ -314,13 +325,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         } catch (e: Exception) {
             // déjà désinscrit
         }
-        nsdListener?.let {
-            try {
-                nsdManager?.unregisterService(it)
-            } catch (e: Exception) {
-                // déjà retiré
-            }
-        }
+        unregisterMdns()
         server?.stop()
         server = null
         super.onDestroy()
@@ -779,6 +784,12 @@ class ApiService : Service(), EsphomeServer.Handler {
         service.setAttribute("friendly_name", friendlyName)
         service.setAttribute("platform", "android")
         service.setAttribute("network", "wifi")
+        // Annonce du chiffrement, comme un appareil ESPHome
+        if (server?.isEncrypted == true) {
+            service.setAttribute("api_encryption", EsphomeServer.NOISE_PROTOCOL)
+        } else {
+            service.setAttribute("api_encryption_supported", EsphomeServer.NOISE_PROTOCOL)
+        }
         val listener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(info: NsdServiceInfo) {}
             override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) {}
@@ -792,6 +803,26 @@ class ApiService : Service(), EsphomeServer.Handler {
         } catch (e: Exception) {
             // L'ajout manuel par adresse IP reste possible
         }
+    }
+
+    private fun unregisterMdns() {
+        nsdListener?.let {
+            try {
+                nsdManager?.unregisterService(it)
+            } catch (e: Exception) {
+                // déjà retiré
+            }
+        }
+        nsdListener = null
+    }
+
+    /** Vrai si la connexion avec Home Assistant est chiffrée (clé en place). */
+    val isEncrypted: Boolean
+        get() = server?.isEncrypted == true
+
+    /** Retire la clé : HA demandera de confirmer le passage sans chiffrement (ou en recréera une). */
+    fun resetEncryption() {
+        server?.changeKey(null)
     }
 
     private fun isEmulatorNetwork(): Boolean {

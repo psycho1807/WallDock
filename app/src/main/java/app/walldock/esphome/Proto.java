@@ -162,6 +162,11 @@ final class Proto {
         return values;
     }
 
+    static byte[] getBytes(Map<Integer, Object> fields, int field) {
+        Object v = fields.get(field);
+        return v instanceof byte[] ? (byte[]) v : new byte[0];
+    }
+
     static String getString(Map<Integer, Object> fields, int field) {
         Object v = fields.get(field);
         return v instanceof byte[] ? new String((byte[]) v, StandardCharsets.UTF_8) : "";
