@@ -3,7 +3,7 @@
 **Appli Android de kiosque pour tablette murale Home Assistant, avec l'assistant vocal Jarvis intégré.**
 *Android wall-panel kiosk for Home Assistant, with a built-in voice assistant — [English below](#english).*
 
-Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/releases/latest) · [Soutenir le projet](#soutenir-le-projet)
+Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/releases/latest) · [Soutenir le projet](#soutenir-le-projet) · ⭐ [WallDock Pro](#walldock-pro)
 
 ---
 
@@ -85,9 +85,9 @@ Avec [Obtainium](https://github.com/ImranR98/Obtainium), WallDock s'installe et 
 
 Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser](https://www.fully-kiosk.com/) (novembre 2026). Fully est un produit mûr et très complet ; WallDock est fait pour Home Assistant avant tout.
 
-| | WallDock (gratuit) | WallDock Pro (bientôt) | Fully Kiosk (licence PLUS) |
+| | WallDock (gratuit) | [WallDock Pro](#walldock-pro) | Fully Kiosk (licence PLUS) |
 |---|---|---|---|
-| Prix | Gratuit, libre (GPL-3.0) | Prix à définir | 8,90 € par tablette (paiement unique) |
+| Prix | Gratuit, libre (GPL-3.0) | 4,99 € (achat unique, 3 tablettes, 14 jours d'essai) | 8,90 € par tablette (paiement unique) |
 | Tableau de bord plein écran, écran toujours allumé | ✅ | ✅ | ✅ |
 | Relance au démarrage | ✅ | ✅ | ✅ |
 | Intégration HA | ✅ API native ESPHome, découverte auto, chiffrée | ✅ + MQTT | ✅ intégration officielle « Fully Kiosk Browser » |
@@ -104,9 +104,17 @@ Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser
 | Navigateur complet (onglets, PDF…) | ❌ | ✅ onglets, lecteur PDF | ✅ |
 | Interphone entre tablettes | ❌ | ✅ | ❌ |
 | Écran de la tablette visible et commandable depuis HA | capture seulement | ✅ en direct, clics et gestes | ✅ capture ; commande à distance via Fully Remote Admin |
-| Distribution | GitHub / Obtainium (Play Store prévu) | Bientôt | Play Store et site officiel |
+| Distribution | GitHub / Obtainium (Play Store prévu) | GitHub / Obtainium (Play Store prévu) | Play Store et site officiel |
 
-En résumé : si vous voulez un écran mural Home Assistant avec un assistant vocal, gratuit, WallDock est fait pour ça. Si vous avez besoin d'un verrouillage strict (tablette en accès public), d'administration à distance ou d'onglets, la future **WallDock Pro** les apportera (avec en plus l'interphone entre tablettes et l'écran de la tablette commandable depuis HA) ; d'ici là, Fully reste la référence.
+En résumé : si vous voulez un écran mural Home Assistant avec un assistant vocal, gratuit, WallDock est fait pour ça. Si vous avez besoin d'un verrouillage strict (tablette en accès public), d'administration à distance ou d'onglets, **[WallDock Pro](#walldock-pro)** les apporte (avec en plus l'interphone entre tablettes et l'écran de la tablette commandable depuis HA) ; d'ici là, Fully reste la référence.
+
+## WallDock Pro
+
+Une version **Pro** ajoute : mots de réveil au choix et mot personnalisé, interphone entre tablettes, écran de la tablette en direct dans Home Assistant (voir et toucher), kiosque verrouillé, administration à distance (page web + API REST), MQTT, onglets et lecteur PDF.
+
+- 📦 **Télécharger** : [WallDock-Pro-Releases](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) — **14 jours d'essai gratuit**, sans rien payer.
+- 🔑 **Licence** (achat unique, 4,99 €, 1 clé = 3 tablettes) : [becasseau.gumroad.com/l/walldock-pro](https://becasseau.gumroad.com/l/walldock-pro)
+- La version gratuite reste gratuite, complète et libre ; acheter la Pro est aussi une façon de soutenir le projet.
 
 ## Soutenir le projet
 
@@ -145,6 +153,8 @@ Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/re
 <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22app.walldock%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fpsycho1807%2FWallDock%22%2C%22author%22%3A%22psycho1807%22%2C%22name%22%3A%22WallDock%22%7D"><img src="docs/badge_obtainium.png" alt="Get it on Obtainium" height="54"></a>
 
  The app UI is available in English and French (it follows the tablet language).
+
+**WallDock Pro** adds wake word choice and a custom wake word, intercom between tablets, the live tablet screen in Home Assistant (view and touch), locked kiosk, remote admin page + REST API, MQTT, tabs and PDF viewer. [Download](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) (14-day free trial) · [Licence key](https://becasseau.gumroad.com/l/walldock-pro) (one-time €4.99, 3 tablets).
 
 Support the project: [Ko-fi](https://ko-fi.com/psycho1807)
 
