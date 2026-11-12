@@ -60,6 +60,12 @@ class SettingsActivity : Activity() {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
         dockSelection.addAll(prefs.dockApps)
+        // Android 13+ (obligatoire à partir d'Android 16) : retour géré par un rappel
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
+                if (!prefs.isConfigured) toast(tr(R.string.settings_save_first)) else finish()
+            }
+        }
         videoSelection.addAll(prefs.videoApps)
 
         val column = LinearLayout(this)
