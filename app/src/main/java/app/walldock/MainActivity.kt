@@ -297,6 +297,7 @@ class MainActivity : Activity(), DashboardController {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_MIC) ApiService.instance?.onMicrophoneChanged()
+        if (requestCode == REQUEST_CAMERA) ApiService.instance?.applyMotionSettings()
     }
 
     /** Teste Home Assistant en arrière-plan ; bascule sur l'écran de secours ou recharge au retour. */
@@ -402,6 +403,17 @@ class MainActivity : Activity(), DashboardController {
             }
         }
         handle.layoutParams = params
+    }
+
+    override fun requestCameraPermission() {
+        if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.CAMERA), REQUEST_CAMERA)
+        }
+    }
+
+    override fun userPresent() {
+        lastTouch = SystemClock.elapsedRealtime()
+        screensaver.visibility = View.GONE
     }
 
     override fun applySettings() {
@@ -610,5 +622,6 @@ class MainActivity : Activity(), DashboardController {
 
     companion object {
         const val REQUEST_MIC = 42
+        const val REQUEST_CAMERA = 43
     }
 }

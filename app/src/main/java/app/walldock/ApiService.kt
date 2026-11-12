@@ -110,6 +110,21 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val setUrl = Entity(Entity.Kind.TEXT, "reglage_adresse_tableau", tr(R.string.entity_set_url))
         .icon("mdi:web").category(Entity.CATEGORY_CONFIG)
 
+    private val motionSensor = Entity(Entity.Kind.BINARY_SENSOR, "mouvement", tr(R.string.entity_motion))
+        .deviceClass("motion")
+    private val motionStatus = Entity(Entity.Kind.TEXT_SENSOR, "detection_camera", tr(R.string.entity_motion_status))
+        .icon("mdi:camera-outline").category(Entity.CATEGORY_DIAGNOSTIC)
+    private val setMotion = Entity(Entity.Kind.SWITCH, "reglage_detection_mouvement", tr(R.string.entity_set_motion))
+        .icon("mdi:motion-sensor").category(Entity.CATEGORY_CONFIG)
+    private val setMotionSensitivity = Entity(Entity.Kind.SELECT, "reglage_sensibilite_mouvement", tr(R.string.entity_set_motion_sensitivity))
+        .icon("mdi:tune-vertical").category(Entity.CATEGORY_CONFIG)
+    private val setMotionWake = Entity(Entity.Kind.SWITCH, "reglage_mouvement_allume_ecran", tr(R.string.entity_set_motion_wake))
+        .icon("mdi:monitor-eye").category(Entity.CATEGORY_CONFIG)
+    private val motionSensitivityLabels get() = listOf(
+        tr(R.string.motion_sens_low), tr(R.string.motion_sens_medium), tr(R.string.motion_sens_high)
+    )
+    private var motionDetector: MotionDetector? = null
+
     private val sensitivityLabels get() = listOf(
         tr(R.string.sens_short_normal), tr(R.string.sens_short_high), tr(R.string.sens_short_very_high)
     )
@@ -127,7 +142,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate,
         setListen, setOnDevice, setSensitivity, setScreensaver, setScreensaverMinutes, setReturnSeconds,
-        setAutoUpdate, setHandle, setUrl
+        setAutoUpdate, setHandle, setUrl,
+        motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake
     )
 
     /** Diagnostic du micro toutes les 5 s : niveau (crête) et secondes de son envoyées à HA. */
@@ -144,6 +160,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 assistant.wakeScorePeak = 0f
                 server?.setState(wakeScore, (score * 100f).toInt().toFloat())
                 server?.setState(detectionMode, assistant.detectionStatus)
+                server?.setState(motionStatus, motionStatusText())
             }
             reportVolume()
             main.postDelayed(this, 5_000)
@@ -264,7 +281,11 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(mediaEntity, tabletPlayer.state())
         setSensitivity.options = sensitivityLabels
         setHandle.options = handleLabels.values.toList()
+        setMotionSensitivity.options = motionSensitivityLabels
+        srv.setState(motionSensor, false)
         reportSettings()
+        motionDetector = MotionDetector(this) { onMotion(it) }
+        applyMotionSettings()
         srv.setState(screen, AppState.screenOn)
         srv.setState(brightness, if (AppState.brightness < 0) 100f else AppState.brightness)
         srv.setState(currentApp, AppState.currentApp)
@@ -309,6 +330,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         instance = null
         jarvis?.release()
         jarvis = null
+        motionDetector?.stop()
+        motionDetector = null
         mediaPlayer?.release()
         mediaPlayer = null
         main.removeCallbacks(updateCheck)
@@ -378,6 +401,11 @@ class ApiService : Service(), EsphomeServer.Handler {
                     jarvis?.onSettingsChanged()
                 }
                 entity === setScreensaver -> prefs.screensaverEnabled = state
+                entity === setMotion -> {
+                    prefs.motionEnabled = state
+                    applyMotionSettings()
+                }
+                entity === setMotionWake -> prefs.motionWakesScreen = state
                 entity === setAutoUpdate -> prefs.autoUpdate = state
             }
             reportSettings()
@@ -410,6 +438,48 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(setAutoUpdate, prefs.autoUpdate)
         srv.setState(setHandle, handleLabels[prefs.handlePosition] ?: handleLabels.values.first())
         srv.setState(setUrl, prefs.haUrl)
+        srv.setState(setMotion, prefs.motionEnabled)
+        srv.setState(setMotionWake, prefs.motionWakesScreen)
+        srv.setState(setMotionSensitivity, motionSensitivityLabels.getOrElse(prefs.motionSensitivity) { motionSensitivityLabels[1] })
+        srv.setState(motionStatus, motionStatusText())
+    }
+
+    /** Démarre ou arrête la détection de mouvement selon les réglages (et la permission caméra). */
+    fun applyMotionSettings() {
+        val prefs = Prefs(this)
+        val detector = motionDetector ?: return
+        detector.sensitivity = prefs.motionSensitivity
+        if (prefs.motionEnabled) {
+            if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                AppState.controller?.requestCameraPermission()
+            }
+            startInForeground()
+            detector.start()
+        } else {
+            detector.stop()
+            startInForeground()
+        }
+        server?.setState(motionStatus, motionStatusText())
+    }
+
+    private fun motionStatusText(): String {
+        val detector = motionDetector
+        return when {
+            !Prefs(this).motionEnabled -> tr(R.string.motion_status_off)
+            checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED ->
+                tr(R.string.motion_no_permission)
+            detector?.lastError != null -> detector.lastError ?: ""
+            detector?.running == true -> tr(R.string.motion_status_on)
+            else -> tr(R.string.motion_status_off)
+        }
+    }
+
+    private fun onMotion(present: Boolean) {
+        server?.setState(motionSensor, present)
+        server?.setState(motionStatus, motionStatusText())
+        if (!present || !Prefs(this).motionWakesScreen) return
+        if (!AppState.screenOn) setScreen(true) else wakeUp()
+        AppState.controller?.userPresent()
     }
 
     /** Volume des sons (Jarvis, annonces, sonnette) = volume « médias » de la tablette, en %. */
@@ -584,6 +654,15 @@ class ApiService : Service(), EsphomeServer.Handler {
                 if (index >= 0) {
                     Prefs(this).jarvisSensitivity = index
                     jarvis?.reloadVoiceSettings()
+                }
+                reportSettings()
+                return@post
+            }
+            if (entity === setMotionSensitivity) {
+                val index = motionSensitivityLabels.indexOf(option)
+                if (index >= 0) {
+                    Prefs(this).motionSensitivity = index
+                    motionDetector?.sensitivity = index
                 }
                 reportSettings()
                 return@post
@@ -859,6 +938,12 @@ class ApiService : Service(), EsphomeServer.Handler {
             // Micro autorisé en arrière-plan (Jarvis) seulement si la permission est accordée
             if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            // Caméra (détection de mouvement) seulement si elle est activée et autorisée
+            if (Prefs(this).motionEnabled &&
+                checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             }
             try {
                 startForeground(NOTIFICATION_ID, notification, types)

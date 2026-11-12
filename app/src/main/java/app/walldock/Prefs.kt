@@ -74,6 +74,21 @@ class Prefs(context: Context) {
             edit.commit()
         }
 
+    /** Détection de mouvement avec la caméra frontale. */
+    var motionEnabled: Boolean
+        get() = sp.getBoolean(KEY_MOTION, false)
+        set(value) = sp.edit().putBoolean(KEY_MOTION, value).apply()
+
+    /** Sensibilité du mouvement : 0 faible, 1 moyenne, 2 élevée. */
+    var motionSensitivity: Int
+        get() = sp.getInt(KEY_MOTION_SENSITIVITY, 1)
+        set(value) = sp.edit().putInt(KEY_MOTION_SENSITIVITY, value).apply()
+
+    /** Allumer l'écran (et quitter l'écran de veille) quand quelqu'un passe. */
+    var motionWakesScreen: Boolean
+        get() = sp.getBoolean(KEY_MOTION_WAKE, true)
+        set(value) = sp.edit().putBoolean(KEY_MOTION_WAKE, value).apply()
+
     /** Sensibilité de « Hey Jarvis » : 0 normale, 1 élevée, 2 très élevée. */
     var jarvisSensitivity: Int
         get() = sp.getInt(KEY_JARVIS_SENSITIVITY, 0)
@@ -105,6 +120,9 @@ class Prefs(context: Context) {
         private const val KEY_JARVIS_ON_DEVICE = "jarvis_on_device"
         private const val KEY_JARVIS_SENSITIVITY = "jarvis_sensitivity"
         private const val KEY_NOISE = "api_noise_key"
+        private const val KEY_MOTION = "motion_enabled"
+        private const val KEY_MOTION_SENSITIVITY = "motion_sensitivity"
+        private const val KEY_MOTION_WAKE = "motion_wake_screen"
         private const val KEY_AUTO_UPDATE = "auto_update"
         private const val KEY_HANDLE = "handle_position"
         private const val KEY_SAVER = "screensaver_enabled"
@@ -173,4 +191,8 @@ interface DashboardController {
     fun captureScreen(done: (android.graphics.Bitmap?) -> Unit) = done(null)
     /** Réglages modifiés depuis Home Assistant : poignée, adresse du tableau de bord… */
     fun applySettings() {}
+    /** Quelqu'un passe devant la tablette : quitter l'écran de veille. */
+    fun userPresent() {}
+    /** Demander l'autorisation de la caméra (détection de mouvement activée depuis HA). */
+    fun requestCameraPermission() {}
 }

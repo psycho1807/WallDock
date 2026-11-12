@@ -1,0 +1,1 @@
+• Détection de mouvement avec la caméra frontale : capteur « Mouvement » dans HA, écran qui s'allume quand quelqu'un passe, réglages depuis HA

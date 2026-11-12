@@ -193,4 +193,21 @@
     <string name="encryption_off">🔓 Connection not encrypted yet: Home Assistant will create the key on its own at the next connection</string>
     <string name="encryption_reset">Reset encryption</string>
     <string name="encryption_reset_confirm">Remove the encryption key? Home Assistant will then ask you to confirm in Settings → Devices &amp; services, or will create a new key on its own.</string>
+    <string name="entity_motion">Motion</string>
+    <string name="entity_motion_status">Motion camera</string>
+    <string name="entity_set_motion">Motion detection (camera)</string>
+    <string name="entity_set_motion_sensitivity">Motion sensitivity</string>
+    <string name="entity_set_motion_wake">Turn the screen on when someone passes</string>
+    <string name="motion_sens_low">Low</string>
+    <string name="motion_sens_medium">Medium</string>
+    <string name="motion_sens_high">High</string>
+    <string name="motion_status_on">Watching</string>
+    <string name="motion_status_off">Off</string>
+    <string name="motion_no_permission">Camera not allowed: allow it on the tablet</string>
+    <string name="motion_no_camera">No camera on this tablet</string>
+    <string name="motion_camera_busy">Camera used by another app, retrying in 1 min</string>
+    <string name="motion_camera_error">Camera error %1$d, retrying in 1 min</string>
+    <string name="motion_camera_error_text">Camera error (%1$s), retrying in 1 min</string>
+    <string name="settings_motion">Motion detection with the front camera</string>
+    <string name="settings_motion_help">Turns the screen on when someone passes and gives a “Motion” sensor to Home Assistant. Images stay on the tablet and are never recorded. Sensitivity can be set from Home Assistant.</string>
 </resources>

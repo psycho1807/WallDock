@@ -192,4 +192,21 @@
     <string name="encryption_off">🔓 Connexion pas encore chiffrée : Home Assistant créera la clé tout seul à la prochaine connexion</string>
     <string name="encryption_reset">Réinitialiser le chiffrement</string>
     <string name="encryption_reset_confirm">Retirer la clé de chiffrement ? Home Assistant demandera alors de confirmer dans Paramètres → Appareils et services, ou recréera une clé tout seul.</string>
+    <string name="entity_motion">Mouvement</string>
+    <string name="entity_motion_status">Caméra de détection</string>
+    <string name="entity_set_motion">Détection de mouvement (caméra)</string>
+    <string name="entity_set_motion_sensitivity">Sensibilité du mouvement</string>
+    <string name="entity_set_motion_wake">Allumer l’écran quand quelqu’un passe</string>
+    <string name="motion_sens_low">Faible</string>
+    <string name="motion_sens_medium">Moyenne</string>
+    <string name="motion_sens_high">Élevée</string>
+    <string name="motion_status_on">Surveille</string>
+    <string name="motion_status_off">Désactivée</string>
+    <string name="motion_no_permission">Caméra non autorisée : l’autoriser sur la tablette</string>
+    <string name="motion_no_camera">Pas de caméra sur cette tablette</string>
+    <string name="motion_camera_busy">Caméra utilisée par une autre appli, nouvel essai dans 1 min</string>
+    <string name="motion_camera_error">Erreur caméra %1$d, nouvel essai dans 1 min</string>
+    <string name="motion_camera_error_text">Erreur caméra (%1$s), nouvel essai dans 1 min</string>
+    <string name="settings_motion">Détection de mouvement avec la caméra frontale</string>
+    <string name="settings_motion_help">Allume l’écran quand quelqu’un passe et donne un capteur « Mouvement » à Home Assistant. Les images restent sur la tablette et ne sont jamais enregistrées. La sensibilité se règle depuis Home Assistant.</string>
 </resources>

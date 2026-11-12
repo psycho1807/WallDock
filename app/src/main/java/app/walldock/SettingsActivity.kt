@@ -40,6 +40,7 @@ class SettingsActivity : Activity() {
     private lateinit var updateCheck: CheckBox
     private lateinit var jarvisCheck: CheckBox
     private lateinit var onDeviceCheck: CheckBox
+    private lateinit var motionCheck: CheckBox
     private lateinit var jarvisText: TextView
     private lateinit var updateText: TextView
     private val updateListener: (String) -> Unit = { updateText.text = updateLine(it) }
@@ -153,6 +154,12 @@ class SettingsActivity : Activity() {
         onDeviceCheck.setTextColor(Color.WHITE)
         onDeviceCheck.isChecked = prefs.jarvisOnDevice
         column.addView(onDeviceCheck)
+        motionCheck = CheckBox(this)
+        motionCheck.text = tr(R.string.settings_motion)
+        motionCheck.setTextColor(Color.WHITE)
+        motionCheck.isChecked = prefs.motionEnabled
+        column.addView(motionCheck)
+        column.addView(label(tr(R.string.settings_motion_help)))
         column.addView(label(tr(R.string.settings_sensitivity)))
         sensitivityGroup = RadioGroup(this)
         val levels = listOf(tr(R.string.sensitivity_normal), tr(R.string.sensitivity_high), tr(R.string.sensitivity_very_high))
@@ -232,6 +239,7 @@ class SettingsActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == MainActivity.REQUEST_CAMERA) ApiService.instance?.applyMotionSettings()
         if (requestCode == MainActivity.REQUEST_MIC) {
             ApiService.instance?.onMicrophoneChanged()
             updateJarvisStatus()
@@ -318,6 +326,13 @@ class SettingsActivity : Activity() {
                 val modeChanged = prefs.jarvisOnDevice != onDeviceCheck.isChecked
                 if (modeChanged && onDeviceCheck.isChecked) WakeWordDetector.clearCrash(this)
                 prefs.jarvisOnDevice = onDeviceCheck.isChecked
+                prefs.motionEnabled = motionCheck.isChecked
+                if (motionCheck.isChecked &&
+                    checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermissions(arrayOf(android.Manifest.permission.CAMERA), MainActivity.REQUEST_CAMERA)
+                }
+                ApiService.instance?.applyMotionSettings()
                 val level = sensitivityGroup.findViewById<RadioButton>(sensitivityGroup.checkedRadioButtonId)
                 prefs.jarvisSensitivity = (level?.tag as? Int) ?: 0
                 ApiService.instance?.jarvis?.reloadVoiceSettings()

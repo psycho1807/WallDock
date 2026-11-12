@@ -15,6 +15,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Retour automatique au tableau de bord après inactivité ; les applis « Vidéo » en sont exclues.
 - Réglages protégés par un code ; WallDock peut devenir l'écran d'accueil de la tablette.
 - Écran de veille horloge, écran de secours quand Home Assistant ne répond pas.
+- Détection de mouvement avec la caméra frontale : l'écran s'allume quand quelqu'un passe, capteur « Mouvement » dans HA (les images restent sur la tablette).
 - Mises à jour automatiques depuis les releases GitHub (désactivables).
 - Sauvegarde et restauration des réglages dans un fichier.
 
@@ -73,6 +74,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 **WallDock** turns an Android tablet into a Home Assistant wall panel:
 
+- Motion detection with the front camera (screen wakes up, "Motion" sensor in HA; images never leave the tablet).
 - Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, clock screensaver, offline fallback screen, automatic updates from GitHub releases.
 - Native ESPHome API integration (auto-discovered, **encrypted**: Home Assistant creates the Noise key on its own at the first connection): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.
