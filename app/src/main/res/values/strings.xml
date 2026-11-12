@@ -272,4 +272,13 @@
     <string name="alarm_sunrise">Sunrise: the screen lights up gradually %1$d minutes before</string>
     <string name="alarm_none">none</string>
     <string name="entity_next_alarm">Next alarm</string>
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_day">Day</string>
+    <string name="calendar_week">Week</string>
+    <string name="calendar_month">Month</string>
+    <string name="calendar_agenda">Agenda</string>
+    <string name="calendar_today">Today</string>
+    <string name="calendar_empty">Nothing planned</string>
+    <string name="calendar_unavailable">Calendars unavailable: the dashboard must be loaded and signed in to Home Assistant</string>
+    <string name="calendar_in_dock">“Calendar” button in the dock (Home Assistant calendars: day, week, month, agenda; also the “afficher_calendrier” action from HA)</string>
 </resources>

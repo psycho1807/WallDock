@@ -54,6 +54,7 @@ class MainActivity : Activity(), DashboardController {
     private lateinit var screensaverContent: View
     /** Page affichée en écran de veille (si une adresse est réglée). */
     private var saverWeb: WebView? = null
+    private lateinit var calendarScreen: CalendarScreen
     /** Diaporama photos de l'écran de veille (Immich ou dossier). */
     private var slideshow: PhotoSlideshow? = null
     private var lastTouch = 0L
@@ -112,6 +113,7 @@ class MainActivity : Activity(), DashboardController {
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         root.addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        calendarScreen = CalendarScreen(this, root, web)
         // Zoom : la page est mise en page sur une surface plus grande (ou plus petite), puis
         // réduite (ou agrandie) pour remplir l'écran ; les touchers suivent automatiquement.
         root.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
@@ -578,7 +580,19 @@ class MainActivity : Activity(), DashboardController {
         web.reload()
     }
 
+    override fun showCalendar(view: String) {
+        setDockVisible(false)
+        val mode = when (view.trim().lowercase()) {
+            "jour", "day" -> CalendarScreen.Mode.DAY
+            "mois", "month" -> CalendarScreen.Mode.MONTH
+            "agenda", "liste", "schedule" -> CalendarScreen.Mode.AGENDA
+            else -> CalendarScreen.Mode.WEEK
+        }
+        calendarScreen.open(mode)
+    }
+
     override fun showHome() {
+        if (calendarScreen.isOpen) calendarScreen.close()
         if (prefs.haUrl.isNotBlank() && web.url != prefs.haUrl) web.loadUrl(prefs.haUrl)
     }
 
@@ -628,6 +642,7 @@ class MainActivity : Activity(), DashboardController {
     /** Mode kiosque : le bouton Retour ne quitte jamais l'appli. */
     private fun handleBack() {
         when {
+            calendarScreen.isOpen -> calendarScreen.close()
             dockPanel.visibility == View.VISIBLE -> setDockVisible(false)
             web.canGoBack() -> web.goBack()
         }
@@ -644,6 +659,10 @@ class MainActivity : Activity(), DashboardController {
         dockRow.addView(dockItem("Jarvis", glyph("◉")) {
             setDockVisible(false)
             ApiService.instance?.jarvis?.talk()
+        })
+        if (prefs.calendarInDock) dockRow.addView(dockItem(tr(R.string.calendar_title), glyph("▦")) {
+            setDockVisible(false)
+            calendarScreen.open()
         })
         dockRow.addView(dockItem(tr(R.string.dock_reload), glyph("⟳")) {
             web.reload()

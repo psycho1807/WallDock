@@ -181,6 +181,11 @@ class Prefs(context: Context) {
         get() = sp.getInt("photo_seconds", 15)
         set(value) = sp.edit().putInt("photo_seconds", value.coerceIn(3, 600)).apply()
 
+    /** Bouton « Calendrier » (calendriers de HA) dans le dock. */
+    var calendarInDock: Boolean
+        get() = sp.getBoolean("calendar_in_dock", true)
+        set(value) = sp.edit().putBoolean("calendar_in_dock", value).apply()
+
     var jarvisOnDevice: Boolean
         get() = sp.getBoolean(KEY_JARVIS_ON_DEVICE, true)
         set(value) = sp.edit().putBoolean(KEY_JARVIS_ON_DEVICE, value).apply()
@@ -284,6 +289,8 @@ object AppState {
 }
 
 interface DashboardController {
+    /** Calendriers de HA en plein écran (« jour », « semaine », « mois », « agenda »). */
+    fun showCalendar(view: String) {}
     fun applyScreen()
     fun reloadDashboard()
     /** Revenir à la page d'accueil configurée. */

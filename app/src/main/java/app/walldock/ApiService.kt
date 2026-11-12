@@ -386,9 +386,10 @@ class ApiService : Service(), EsphomeServer.Handler {
         .arg("heure", UserService.ARG_STRING).arg("jours", UserService.ARG_STRING)
         .arg("nom", UserService.ARG_STRING).arg("lever_de_soleil", UserService.ARG_BOOL)
     private val deleteAlarmService = UserService("supprimer_reveil").arg("nom", UserService.ARG_STRING)
+    private val calendarService = UserService("afficher_calendrier").arg("vue", UserService.ARG_STRING)
     private val services = listOf(
         speakService, openPageService, openAppService, showAlertService, closeAlertService, playSoundService,
-        showCameraService, addAlarmService, deleteAlarmService
+        showCameraService, addAlarmService, deleteAlarmService, calendarService
     )
     private lateinit var cameraOverlay: CameraOverlay
     /** Caméra HA demandée (entity_id), en attente de son adresse : (titre, secondes). */
@@ -944,6 +945,12 @@ class ApiService : Service(), EsphomeServer.Handler {
                     cameraOverlay.close(notify = false)
                     pendingCamera = null
                     server?.setState(alertShown, false)
+                }
+                service === calendarService -> {
+                    if (!AppState.screenOn) setScreen(true) else wakeUp()
+                    Dashboard.bringToFront(this)
+                    val view = args["vue"] as? String ?: ""
+                    main.postDelayed({ AppState.controller?.showCalendar(view) }, 400)
                 }
                 service === addAlarmService -> {
                     val time = (args["heure"] as? String ?: "").trim()

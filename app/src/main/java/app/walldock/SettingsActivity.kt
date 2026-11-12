@@ -48,6 +48,7 @@ class SettingsActivity : Activity() {
     private lateinit var systemBrightnessCheck: CheckBox
     private lateinit var bootCheck: CheckBox
     private lateinit var listenOffCheck: CheckBox
+    private lateinit var calendarCheck: CheckBox
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
     private lateinit var wakeField: EditText
@@ -299,6 +300,14 @@ class SettingsActivity : Activity() {
             column.addView(button(tr(R.string.settings_check_now)) { Updater.check(this, install = true) })
         }
 
+        // Calendrier
+        column.addView(heading(tr(R.string.calendar_title), 18f))
+        calendarCheck = CheckBox(this)
+        calendarCheck.text = tr(R.string.calendar_in_dock)
+        calendarCheck.setTextColor(Color.WHITE)
+        calendarCheck.isChecked = prefs.calendarInDock
+        column.addView(calendarCheck)
+
         // Réveils
         column.addView(heading(tr(R.string.alarm_section), 18f))
         column.addView(label(tr(R.string.alarm_help)))
@@ -451,6 +460,7 @@ class SettingsActivity : Activity() {
                 zoomField.text.toString().toIntOrNull()?.let { prefs.zoom = it }
                 prefs.startOnBoot = bootCheck.isChecked
                 prefs.listenScreenOff = listenOffCheck.isChecked
+                prefs.calendarInDock = calendarCheck.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
                 wakeField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.wakeTime = it }

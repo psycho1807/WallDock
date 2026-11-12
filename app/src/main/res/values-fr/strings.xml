@@ -271,4 +271,13 @@
     <string name="alarm_sunrise">Lever de soleil : l’écran s’éclaire peu à peu %1$d minutes avant</string>
     <string name="alarm_none">aucun</string>
     <string name="entity_next_alarm">Prochain réveil</string>
+    <string name="calendar_title">Calendrier</string>
+    <string name="calendar_day">Jour</string>
+    <string name="calendar_week">Semaine</string>
+    <string name="calendar_month">Mois</string>
+    <string name="calendar_agenda">Agenda</string>
+    <string name="calendar_today">Aujourd’hui</string>
+    <string name="calendar_empty">Rien de prévu</string>
+    <string name="calendar_unavailable">Calendriers indisponibles : le tableau de bord doit être chargé et connecté à Home Assistant</string>
+    <string name="calendar_in_dock">Bouton « Calendrier » dans le dock (calendriers de Home Assistant : jour, semaine, mois, agenda ; aussi l’action « afficher_calendrier » depuis HA)</string>
 </resources>
