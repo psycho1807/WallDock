@@ -13,19 +13,23 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Tableau de bord Home Assistant en plein écran, barres système masquées, écran toujours allumé.
 - Dock d'applis autorisées (Spotify, YouTube, caméras…) ouvert par une poignée (position réglable ou cachée).
 - Retour automatique au tableau de bord après inactivité ; les applis « Vidéo » en sont exclues.
-- Réglages protégés par un code ; WallDock peut devenir l'écran d'accueil de la tablette.
-- Écran de veille horloge, écran de secours quand Home Assistant ne répond pas.
+- Réglages protégés par un code ; WallDock peut devenir l'écran d'accueil de la tablette (conseillé sur une tablette murale).
+- Redémarrage automatique : WallDock se relance quand la tablette redémarre (coupure de courant), même s'il n'est pas l'écran d'accueil (il faut l'autorisation « afficher par-dessus les autres applis »).
+- Écran de veille : horloge, ou une page de votre choix (une vue du tableau de bord, par exemple `/lovelace/veille`).
+- Luminosité de la fenêtre WallDock, ou du système entier en option (autorisation « Modifier les paramètres système »).
+- Écran de secours quand Home Assistant ne répond pas.
 - Détection de mouvement avec la caméra frontale : l'écran s'allume quand quelqu'un passe, capteur « Mouvement » dans HA (les images restent sur la tablette).
 - Mises à jour automatiques depuis les releases GitHub (désactivables).
 - Sauvegarde et restauration des réglages dans un fichier.
 
 **Intégration Home Assistant** (API native ESPHome, découverte automatique, **connexion chiffrée**)
 - Chiffrement ESPHome (Noise) : à la première connexion, Home Assistant crée une clé et l'envoie à la tablette ; ensuite, seule la connexion chiffrée avec cette clé est acceptée. Rien à saisir. « Réinitialiser le chiffrement » dans les réglages retire la clé.
-- Capteurs : batterie, en charge, appli ouverte, alerte affichée, mise à jour, état de Jarvis.
+- Capteurs : batterie, en charge, température de la batterie, signal Wi-Fi, appli ouverte, alerte affichée, mise à jour, état de Jarvis.
+- Inactivité : capteur « Inactivité » (secondes depuis le dernier toucher, par pas de 10 s) et binary_sensor « Activité sur l'écran » (délai réglable), pour tout piloter par automatisation.
 - Commandes : écran, luminosité, volume, ouvrir une appli ou une page, revenir au tableau de bord, recharger.
 - Actions : `parler`, `jouer_son`, `ouvrir_page`, `ouvrir_appli`, `afficher_alerte` (popup plein écran avec compte à rebours), `afficher_camera` (une caméra en plein écran : `camera: camera.sonnette` pour son image, ou une page du tableau de bord comme `/sonnette/live` pour la vidéo en direct), `fermer_alerte`.
 - Caméra « Capture d'écran » : ce qu'affiche la tablette, visible dans HA.
-- Réglages modifiables depuis HA (catégorie Configuration de l'appareil) : écoute et sensibilité de Jarvis, écran de veille, délai de retour, poignée du dock, adresse du tableau de bord, mises à jour automatiques.
+- Réglages modifiables depuis HA (catégorie Configuration de l'appareil) : écoute et sensibilité de Jarvis, écran de veille et sa page, délai de retour, poignée du dock, adresse du tableau de bord, luminosité du système, démarrage automatique, mises à jour automatiques.
 
 **Jarvis, assistant vocal** (satellite Assist)
 - « Hey Jarvis » reconnu sur la tablette (modèles openWakeWord) ou par Home Assistant.
@@ -75,7 +79,8 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 **WallDock** turns an Android tablet into a Home Assistant wall panel:
 
 - Motion detection with the front camera (screen wakes up, "Motion" sensor in HA; images never leave the tablet).
-- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, clock screensaver, offline fallback screen, automatic updates from GitHub releases.
+- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, start on boot (power cut), screensaver (clock or any dashboard page), optional system brightness, offline fallback screen, automatic updates from GitHub releases.
+- Monitoring sensors: battery level and temperature, Wi-Fi signal, inactivity time and a screen-activity binary sensor.
 - Native ESPHome API integration (auto-discovered, **encrypted**: Home Assistant creates the Noise key on its own at the first connection): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.
 - **Media player** entity: music, radio, Music Assistant, announcements, pause and volume.

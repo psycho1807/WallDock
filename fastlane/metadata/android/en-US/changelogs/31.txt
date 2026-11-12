@@ -1,0 +1,5 @@
+• Starts automatically after a power cut (even when not the home screen), with a clear warning in the settings.
+• Screensaver on any page (dashboard view) instead of the clock.
+• New sensors: inactivity, screen activity, battery temperature, Wi-Fi signal.
+• Option: set the whole system brightness.
+Thanks to Kévin for the suggestions!

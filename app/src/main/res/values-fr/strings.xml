@@ -211,4 +211,18 @@
     <string name="settings_motion_help">Allume l’écran quand quelqu’un passe et donne un capteur « Mouvement » à Home Assistant. Les images restent sur la tablette et ne sont jamais enregistrées. La sensibilité se règle depuis Home Assistant.</string>
     <string name="sensitivity_low">Basse (pièce bruyante, télé à côté : moins de déclenchements pour rien)</string>
     <string name="sens_short_low">Basse</string>
+    <string name="entity_battery_temp">Température de la batterie</string>
+    <string name="entity_wifi_signal">Signal Wi-Fi</string>
+    <string name="entity_idle">Inactivité</string>
+    <string name="entity_activity">Activité sur l’écran</string>
+    <string name="entity_set_activity_seconds">Délai d’activité</string>
+    <string name="entity_set_saver_url">Page de l’écran de veille</string>
+    <string name="entity_set_system_brightness">Luminosité du système</string>
+    <string name="entity_set_start_on_boot">Démarrage automatique</string>
+    <string name="settings_saver_url">Page de l’écran de veille (facultatif) : une vue du tableau de bord ou une adresse, à la place de l’horloge</string>
+    <string name="settings_saver_url_hint">ex. /lovelace/veille</string>
+    <string name="settings_system_brightness">Régler la luminosité du système (aussi dans les autres applis)</string>
+    <string name="settings_system_brightness_help">Il faut l’autorisation « Modifier les paramètres système », demandée à l’enregistrement. Sans elle, seule la fenêtre de WallDock est assombrie.</string>
+    <string name="settings_start_on_boot">Lancer WallDock au démarrage de la tablette (coupure de courant, redémarrage)</string>
+    <string name="status_home_warning">Sans cela, après une coupure de courant, la tablette peut rester sur l’accueil Android si Android bloque le lancement automatique. Conseillé sur une tablette murale.</string>
 </resources>

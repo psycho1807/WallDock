@@ -212,4 +212,18 @@
     <string name="settings_motion_help">Turns the screen on when someone passes and gives a “Motion” sensor to Home Assistant. Images stay on the tablet and are never recorded. Sensitivity can be set from Home Assistant.</string>
     <string name="sensitivity_low">Low (noisy room, TV nearby: fewer false triggers)</string>
     <string name="sens_short_low">Low</string>
+    <string name="entity_battery_temp">Battery temperature</string>
+    <string name="entity_wifi_signal">Wi-Fi signal</string>
+    <string name="entity_idle">Inactivity</string>
+    <string name="entity_activity">Screen activity</string>
+    <string name="entity_set_activity_seconds">Activity delay</string>
+    <string name="entity_set_saver_url">Screensaver page</string>
+    <string name="entity_set_system_brightness">System brightness</string>
+    <string name="entity_set_start_on_boot">Start on boot</string>
+    <string name="settings_saver_url">Screensaver page (optional): a dashboard view or any address, instead of the clock</string>
+    <string name="settings_saver_url_hint">e.g. /lovelace/screensaver</string>
+    <string name="settings_system_brightness">Set the system brightness (also in other apps)</string>
+    <string name="settings_system_brightness_help">Needs the “Modify system settings” permission, asked when you save. Without it, only the WallDock window is dimmed.</string>
+    <string name="settings_start_on_boot">Start WallDock when the tablet starts (power cut, restart)</string>
+    <string name="status_home_warning">Without it, after a power cut the tablet may stay on the Android home screen if Android blocks the automatic start. Recommended on a wall tablet.</string>
 </resources>

@@ -94,6 +94,26 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_JARVIS_SENSITIVITY, 0)
         set(value) = sp.edit().putInt(KEY_JARVIS_SENSITIVITY, value).apply()
 
+    /** Relancer WallDock au démarrage de la tablette. */
+    var startOnBoot: Boolean
+        get() = sp.getBoolean(KEY_START_ON_BOOT, true)
+        set(value) = sp.edit().putBoolean(KEY_START_ON_BOOT, value).apply()
+
+    /** Page affichée comme écran de veille ("" = horloge de WallDock). */
+    var screensaverUrl: String
+        get() = sp.getString(KEY_SAVER_URL, "") ?: ""
+        set(value) = sp.edit().putString(KEY_SAVER_URL, value).apply()
+
+    /** Régler la luminosité du système (autorisation « modifier les paramètres système »). */
+    var systemBrightness: Boolean
+        get() = sp.getBoolean(KEY_SYSTEM_BRIGHTNESS, false)
+        set(value) = sp.edit().putBoolean(KEY_SYSTEM_BRIGHTNESS, value).apply()
+
+    /** Délai (s) sans toucher l'écran avant que le capteur « Activité » passe à « non ». */
+    var activitySeconds: Int
+        get() = sp.getInt(KEY_ACTIVITY_SECONDS, 60)
+        set(value) = sp.edit().putInt(KEY_ACTIVITY_SECONDS, value).apply()
+
     var jarvisOnDevice: Boolean
         get() = sp.getBoolean(KEY_JARVIS_ON_DEVICE, true)
         set(value) = sp.edit().putBoolean(KEY_JARVIS_ON_DEVICE, value).apply()
@@ -119,6 +139,10 @@ class Prefs(context: Context) {
         private const val KEY_JARVIS_WAKE = "jarvis_wake_word"
         private const val KEY_JARVIS_ON_DEVICE = "jarvis_on_device"
         private const val KEY_JARVIS_SENSITIVITY = "jarvis_sensitivity"
+        private const val KEY_START_ON_BOOT = "start_on_boot"
+        private const val KEY_SAVER_URL = "screensaver_url"
+        private const val KEY_SYSTEM_BRIGHTNESS = "system_brightness"
+        private const val KEY_ACTIVITY_SECONDS = "activity_seconds"
         private const val KEY_NOISE = "api_noise_key"
         private const val KEY_MOTION = "motion_enabled"
         private const val KEY_MOTION_SENSITIVITY = "motion_sensitivity"
@@ -144,6 +168,14 @@ object AppState {
     /** Dernière interaction détectée (horloge SystemClock.elapsedRealtime). */
     @Volatile
     var lastInteraction = 0L
+
+    /** Dernier toucher sur l'écran de WallDock (elapsedRealtime). */
+    @Volatile
+    var lastTouch = android.os.SystemClock.elapsedRealtime()
+
+    /** Secondes sans toucher l'écran (WallDock ou, avec la détection d'activité, une autre appli). */
+    val idleSeconds: Long
+        get() = (android.os.SystemClock.elapsedRealtime() - maxOf(lastTouch, lastInteraction)) / 1000
 
     /** Vrai quand le service d'accessibilité (détection d'activité) est actif. */
     @Volatile

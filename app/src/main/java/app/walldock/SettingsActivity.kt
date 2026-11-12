@@ -37,6 +37,9 @@ class SettingsActivity : Activity() {
     private lateinit var haStatusText: TextView
     private lateinit var saverCheck: CheckBox
     private lateinit var saverField: EditText
+    private lateinit var saverUrlField: EditText
+    private lateinit var systemBrightnessCheck: CheckBox
+    private lateinit var bootCheck: CheckBox
     private lateinit var updateCheck: CheckBox
     private lateinit var jarvisCheck: CheckBox
     private lateinit var onDeviceCheck: CheckBox
@@ -81,6 +84,20 @@ class SettingsActivity : Activity() {
         column.addView(label(tr(R.string.settings_screensaver_delay)))
         saverField = field(prefs.screensaverMinutes.toString(), "5", InputType.TYPE_CLASS_NUMBER)
         column.addView(saverField)
+        column.addView(label(tr(R.string.settings_saver_url)))
+        saverUrlField = field(prefs.screensaverUrl, tr(R.string.settings_saver_url_hint), InputType.TYPE_TEXT_VARIATION_URI)
+        column.addView(saverUrlField)
+        systemBrightnessCheck = CheckBox(this)
+        systemBrightnessCheck.text = tr(R.string.settings_system_brightness)
+        systemBrightnessCheck.setTextColor(Color.WHITE)
+        systemBrightnessCheck.isChecked = prefs.systemBrightness
+        column.addView(systemBrightnessCheck)
+        column.addView(label(tr(R.string.settings_system_brightness_help)))
+        bootCheck = CheckBox(this)
+        bootCheck.text = tr(R.string.settings_start_on_boot)
+        bootCheck.setTextColor(Color.WHITE)
+        bootCheck.isChecked = prefs.startOnBoot
+        column.addView(bootCheck)
 
         column.addView(label(tr(R.string.settings_handle)))
         handleGroup = RadioGroup(this)
@@ -325,6 +342,17 @@ class SettingsActivity : Activity() {
                 prefs.returnSeconds = delay
                 prefs.screensaverEnabled = saverCheck.isChecked
                 prefs.autoUpdate = updateCheck.isChecked
+                prefs.screensaverUrl = saverUrlField.text.toString().trim()
+                prefs.startOnBoot = bootCheck.isChecked
+                prefs.systemBrightness = systemBrightnessCheck.isChecked
+                if (systemBrightnessCheck.isChecked && !Settings.System.canWrite(this)) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                    } catch (e: Exception) {
+                        // écran indisponible
+                    }
+                }
+                AppState.controller?.applyScreen()
                 val wakeChanged = prefs.jarvisWakeWord != jarvisCheck.isChecked
                 prefs.jarvisWakeWord = jarvisCheck.isChecked
                 val modeChanged = prefs.jarvisOnDevice != onDeviceCheck.isChecked
@@ -359,7 +387,7 @@ class SettingsActivity : Activity() {
         val overlay = Settings.canDrawOverlays(this)
         val activity = AppState.accessibilityActive
         statusText.text = listOf(
-            (if (home) "✅ " else "⚠️ ") + tr(R.string.status_home),
+            (if (home) "✅ " else "⚠️ ") + tr(R.string.status_home) + (if (home) "" else "\n   " + tr(R.string.status_home_warning)),
             (if (overlay) tr(R.string.status_overlay_ok) else tr(R.string.status_overlay_missing)),
             (if (activity) tr(R.string.status_activity_ok) else tr(R.string.status_activity_missing))
         ).joinToString("\n")

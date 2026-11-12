@@ -52,6 +52,8 @@ class MainActivity : Activity(), DashboardController {
     private lateinit var blackCover: View
     private lateinit var screensaver: FrameLayout
     private lateinit var screensaverContent: View
+    /** Page affichée en écran de veille (si une adresse est réglée). */
+    private var saverWeb: WebView? = null
     private var lastTouch = 0L
     private var swallowGesture = false
     private val screensaverCheck = object : Runnable {
@@ -224,7 +226,7 @@ class MainActivity : Activity(), DashboardController {
         // Écran de veille : horloge et date sur fond noir
         screensaver = FrameLayout(this)
         screensaver.setBackgroundColor(Color.BLACK)
-        screensaver.visibility = View.GONE
+        hideScreensaver()
         val clockColumn = LinearLayout(this)
         clockColumn.orientation = LinearLayout.VERTICAL
         clockColumn.gravity = Gravity.CENTER_HORIZONTAL
@@ -347,9 +349,10 @@ class MainActivity : Activity(), DashboardController {
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         lastTouch = SystemClock.elapsedRealtime()
+        AppState.lastTouch = lastTouch
         if (screensaver.visibility == View.VISIBLE) {
             // Un toucher réveille l'écran de veille sans cliquer sur le tableau de bord en dessous
-            screensaver.visibility = View.GONE
+            hideScreensaver()
             swallowGesture = true
         }
         if (swallowGesture) {
@@ -363,19 +366,59 @@ class MainActivity : Activity(), DashboardController {
 
     private fun checkScreensaver() {
         if (!prefs.screensaverEnabled || !AppState.dashboardVisible || !AppState.screenOn) {
-            screensaver.visibility = View.GONE
+            hideScreensaver()
             return
         }
         val idleMs = SystemClock.elapsedRealtime() - lastTouch
         if (idleMs >= prefs.screensaverMinutes * 60_000L) {
             if (screensaver.visibility != View.VISIBLE) {
                 setDockVisible(false)
+                showSaverPage()
                 screensaver.visibility = View.VISIBLE
             }
+            if (saverWeb?.visibility == View.VISIBLE) return
             // Déplacer légèrement l'horloge pour ne pas marquer l'écran
             val range = dp(60)
             screensaverContent.translationX = (Math.random() * 2 * range - range).toFloat()
             screensaverContent.translationY = (Math.random() * 2 * range - range).toFloat()
+        }
+    }
+
+    /**
+     * Écran de veille sur une page (ex. une vue du tableau de bord HA) au lieu de l'horloge :
+     * même session que le tableau de bord, donc déjà connectée.
+     */
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+    private fun showSaverPage() {
+        val address = prefs.screensaverUrl.trim()
+        if (address.isEmpty()) {
+            saverWeb?.visibility = View.GONE
+            screensaverContent.visibility = View.VISIBLE
+            return
+        }
+        val page = saverWeb ?: WebView(this).also {
+            it.settings.javaScriptEnabled = true
+            it.settings.domStorageEnabled = true
+            it.settings.mediaPlaybackRequiresUserGesture = false
+            it.webViewClient = WebViewClient()
+            it.setBackgroundColor(Color.BLACK)
+            CookieManager.getInstance().setAcceptThirdPartyCookies(it, true)
+            screensaver.addView(it, 0, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            saverWeb = it
+        }
+        page.onResume()
+        page.loadUrl(prefs.absoluteUrl(address))
+        page.visibility = View.VISIBLE
+        screensaverContent.visibility = View.GONE
+    }
+
+    private fun hideScreensaver() {
+        if (screensaver.visibility != View.VISIBLE) return
+        screensaver.visibility = View.GONE
+        saverWeb?.let {
+            it.stopLoading()
+            it.loadUrl("about:blank")
+            it.onPause()
         }
     }
 
@@ -413,7 +456,7 @@ class MainActivity : Activity(), DashboardController {
 
     override fun userPresent() {
         lastTouch = SystemClock.elapsedRealtime()
-        screensaver.visibility = View.GONE
+        hideScreensaver()
     }
 
     override fun applySettings() {
@@ -441,7 +484,7 @@ class MainActivity : Activity(), DashboardController {
     override fun onPause() {
         handler.removeCallbacks(screensaverCheck)
         handler.removeCallbacks(healthCheck)
-        screensaver.visibility = View.GONE
+        hideScreensaver()
         AppState.dashboardVisible = false
         setDockVisible(false)
         web.onPause()
@@ -454,7 +497,20 @@ class MainActivity : Activity(), DashboardController {
         if (AppState.screenOn) {
             blackCover.visibility = View.GONE
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            params.screenBrightness = if (AppState.brightness < 0) {
+            val system = AppState.brightness >= 0 && prefs.systemBrightness && Settings.System.canWrite(this)
+            if (system) {
+                // Luminosité de toute la tablette (aussi dans les autres applis)
+                try {
+                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+                    Settings.System.putInt(
+                        contentResolver, Settings.System.SCREEN_BRIGHTNESS,
+                        (AppState.brightness * 2.55f).toInt().coerceIn(1, 255)
+                    )
+                } catch (e: Exception) {
+                    // autorisation retirée entre-temps
+                }
+            }
+            params.screenBrightness = if (AppState.brightness < 0 || system) {
                 WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
             } else {
                 (AppState.brightness / 100f).coerceIn(0.01f, 1f)
@@ -508,6 +564,7 @@ class MainActivity : Activity(), DashboardController {
         handler.removeCallbacks(autoHideDock)
         healthExecutor.shutdownNow()
         web.destroy()
+        saverWeb?.destroy()
         super.onDestroy()
     }
 

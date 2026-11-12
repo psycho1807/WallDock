@@ -1,0 +1,5 @@
+• Redémarrage automatique après une coupure de courant (même sans être l'écran d'accueil), avec un avertissement clair dans les réglages.
+• Écran de veille sur une page au choix (vue du tableau de bord) au lieu de l'horloge.
+• Nouveaux capteurs : inactivité, activité sur l'écran, température de la batterie, signal Wi-Fi.
+• Option : régler la luminosité du système entier.
+Merci à Kévin pour les suggestions !

@@ -141,14 +141,65 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     private val mediaEntity = Entity(Entity.Kind.MEDIA_PLAYER, "lecteur", tr(R.string.entity_lecteur)).icon("mdi:speaker")
 
+    // ---- Supervision et inactivité ----
+    private val batteryTemp = Entity(Entity.Kind.SENSOR, "temperature_batterie", tr(R.string.entity_battery_temp))
+        .unit("°C").deviceClass("temperature").measurement().category(Entity.CATEGORY_DIAGNOSTIC)
+        .also { it.accuracyDecimals = 1 }
+    private val wifiSignal = Entity(Entity.Kind.SENSOR, "signal_wifi", tr(R.string.entity_wifi_signal))
+        .unit("dBm").deviceClass("signal_strength").measurement().category(Entity.CATEGORY_DIAGNOSTIC)
+    private val idleTime = Entity(Entity.Kind.SENSOR, "inactivite", tr(R.string.entity_idle))
+        .unit("s").deviceClass("duration").icon("mdi:timer-sand")
+    private val activity = Entity(Entity.Kind.BINARY_SENSOR, "activite_ecran", tr(R.string.entity_activity))
+        .icon("mdi:gesture-tap")
+    private val setActivitySeconds = Entity(Entity.Kind.NUMBER, "reglage_delai_activite", tr(R.string.entity_set_activity_seconds))
+        .unit("s").range(10f, 3600f, 10f).icon("mdi:timer-cog-outline").category(Entity.CATEGORY_CONFIG)
+        .also { it.numberMode = Entity.NUMBER_MODE_BOX }
+    private val setSaverUrl = Entity(Entity.Kind.TEXT, "reglage_page_veille", tr(R.string.entity_set_saver_url))
+        .icon("mdi:monitor-dashboard").category(Entity.CATEGORY_CONFIG)
+    private val setSystemBrightness = Entity(Entity.Kind.SWITCH, "reglage_luminosite_systeme", tr(R.string.entity_set_system_brightness))
+        .icon("mdi:brightness-auto").category(Entity.CATEGORY_CONFIG)
+    private val setStartOnBoot = Entity(Entity.Kind.SWITCH, "reglage_demarrage_auto", tr(R.string.entity_set_start_on_boot))
+        .icon("mdi:power").category(Entity.CATEGORY_CONFIG)
+
     private val entities = listOf(
         mediaEntity, screenCamera, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate,
         setListen, setOnDevice, setSensitivity, setScreensaver, setScreensaverMinutes, setReturnSeconds,
         setAutoUpdate, setHandle, setUrl,
-        motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake
+        motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake,
+        batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot
     )
+
+    /** Inactivité : capteur arrondi à 10 s, et « activité » selon le délai réglé. */
+    private var lastIdleReported = -1L
+    private val idleReport = object : Runnable {
+        override fun run() {
+            val idle = AppState.idleSeconds
+            val rounded = idle / 10 * 10
+            if (rounded != lastIdleReported) {
+                lastIdleReported = rounded
+                server?.setState(idleTime, rounded.toFloat())
+            }
+            server?.setState(activity, idle < Prefs(this@ApiService).activitySeconds)
+            main.postDelayed(this, 2_000)
+        }
+    }
+
+    /** Niveau du Wi-Fi, chaque minute. */
+    private val wifiReport = object : Runnable {
+        override fun run() {
+            try {
+                val wifi = applicationContext.getSystemService(android.net.wifi.WifiManager::class.java)
+                @Suppress("DEPRECATION")
+                val rssi = wifi?.connectionInfo?.rssi
+                if (rssi != null && rssi > -127 && rssi < 0) server?.setState(wifiSignal, rssi.toFloat())
+            } catch (e: Exception) {
+                // pas de Wi-Fi
+            }
+            main.postDelayed(this, 60_000)
+        }
+    }
 
     /** Diagnostic du micro toutes les 5 s : niveau (crête) et secondes de son envoyées à HA. */
     private var peakLevel = 0f
@@ -234,6 +285,8 @@ class ApiService : Service(), EsphomeServer.Handler {
             if (level >= 0 && scale > 0) server?.setState(battery, (level * 100f / scale).toInt().toFloat())
             val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
             server?.setState(charging, isCharging)
+            val temperature = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+            if (temperature != Int.MIN_VALUE) server?.setState(batteryTemp, temperature / 10f)
         }
     }
 
@@ -299,6 +352,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         Updater.addListener(updateListener)
         main.postDelayed(updateCheck, 60_000)
         main.postDelayed(micReport, 5_000)
+        main.postDelayed(idleReport, 3_000)
+        main.postDelayed(wifiReport, 5_000)
         alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
         cameraOverlay = CameraOverlay(this) { server?.setState(alertShown, alertOverlay.isShowing) }
 
@@ -340,6 +395,8 @@ class ApiService : Service(), EsphomeServer.Handler {
         mediaPlayer = null
         main.removeCallbacks(updateCheck)
         main.removeCallbacks(micReport)
+        main.removeCallbacks(idleReport)
+        main.removeCallbacks(wifiReport)
         Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
         cameraOverlay.close(notify = false)
@@ -411,6 +468,22 @@ class ApiService : Service(), EsphomeServer.Handler {
                 }
                 entity === setMotionWake -> prefs.motionWakesScreen = state
                 entity === setAutoUpdate -> prefs.autoUpdate = state
+                entity === setStartOnBoot -> prefs.startOnBoot = state
+                entity === setSystemBrightness -> {
+                    prefs.systemBrightness = state
+                    // L'autorisation ne peut être donnée que sur la tablette : on ouvre l'écran d'Android
+                    if (state && !android.provider.Settings.System.canWrite(this)) {
+                        try {
+                            startActivity(
+                                Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS, android.net.Uri.parse("package:$packageName"))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) {
+                            // écran indisponible
+                        }
+                    }
+                    AppState.controller?.applyScreen()
+                }
             }
             reportSettings()
         }
@@ -418,6 +491,9 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onText(entity: Entity, value: String) {
         main.post {
+            if (entity === setSaverUrl) {
+                Prefs(this).screensaverUrl = value.trim()
+            }
             if (entity === setUrl) {
                 val url = value.trim().trimEnd('/')
                 if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -442,6 +518,10 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(setAutoUpdate, prefs.autoUpdate)
         srv.setState(setHandle, handleLabels[prefs.handlePosition] ?: handleLabels.values.first())
         srv.setState(setUrl, prefs.haUrl)
+        srv.setState(setSaverUrl, prefs.screensaverUrl)
+        srv.setState(setSystemBrightness, prefs.systemBrightness)
+        srv.setState(setStartOnBoot, prefs.startOnBoot)
+        srv.setState(setActivitySeconds, prefs.activitySeconds.toFloat())
         srv.setState(setMotion, prefs.motionEnabled)
         srv.setState(setMotionWake, prefs.motionWakesScreen)
         srv.setState(setMotionSensitivity, motionSensitivityLabels.getOrElse(prefs.motionSensitivity) { motionSensitivityLabels[1] })
@@ -631,6 +711,9 @@ class ApiService : Service(), EsphomeServer.Handler {
                 setVolume(value)
             } else if (entity === setScreensaverMinutes) {
                 Prefs(this).screensaverMinutes = value.toInt().coerceIn(1, 240)
+                reportSettings()
+            } else if (entity === setActivitySeconds) {
+                Prefs(this).activitySeconds = value.toInt().coerceIn(10, 3600)
                 reportSettings()
             } else if (entity === setReturnSeconds) {
                 Prefs(this).returnSeconds = value.toInt().coerceIn(10, 3600)
