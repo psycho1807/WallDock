@@ -88,8 +88,11 @@ object Updater {
         setStatus(tr(R.string.upd_downloading, latest))
         val file = File(context.cacheDir, "walldock-update.apk")
         download(apkUrl, file)
-        setStatus(tr(R.string.upd_installing, latest))
+        val installing = tr(R.string.upd_installing, latest)
+        setStatus(installing)
         installApk(context, file)
+        // Sans réponse d'Android au bout d'une minute : il attend sûrement une confirmation à l'écran
+        main.postDelayed({ if (status == installing) setStatus(tr(R.string.upd_waiting_screen, latest)) }, 60_000)
     }
 
     private fun installApk(context: Context, file: File) {

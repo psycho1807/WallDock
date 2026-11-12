@@ -225,4 +225,5 @@
     <string name="settings_system_brightness_help">Il faut l’autorisation « Modifier les paramètres système », demandée à l’enregistrement. Sans elle, seule la fenêtre de WallDock est assombrie.</string>
     <string name="settings_start_on_boot">Lancer WallDock au démarrage de la tablette (coupure de courant, redémarrage)</string>
     <string name="status_home_warning">Sans cela, après une coupure de courant, la tablette peut rester sur l’accueil Android si Android bloque le lancement automatique. Conseillé sur une tablette murale.</string>
+    <string name="upd_waiting_screen">La version %1$s attend : confirmez « Mettre à jour » sur l’écran de la tablette</string>
 </resources>

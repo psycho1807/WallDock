@@ -226,4 +226,5 @@
     <string name="settings_system_brightness_help">Needs the “Modify system settings” permission, asked when you save. Without it, only the WallDock window is dimmed.</string>
     <string name="settings_start_on_boot">Start WallDock when the tablet starts (power cut, restart)</string>
     <string name="status_home_warning">Without it, after a power cut the tablet may stay on the Android home screen if Android blocks the automatic start. Recommended on a wall tablet.</string>
+    <string name="upd_waiting_screen">Version %1$s is waiting: confirm “Update” on the tablet screen</string>
 </resources>
