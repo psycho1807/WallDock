@@ -1,0 +1,3 @@
+• Schedule: the screen turns off every night and back on in the morning (times adjustable, also from HA).
+• URL whitelist: only allowed addresses open.
+• Updates now tell HA when they wait for a confirmation on the screen.

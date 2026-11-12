@@ -161,6 +161,16 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val setStartOnBoot = Entity(Entity.Kind.SWITCH, "reglage_demarrage_auto", tr(R.string.entity_set_start_on_boot))
         .icon("mdi:power").category(Entity.CATEGORY_CONFIG)
 
+    // ---- Planification et liste blanche ----
+    private val setSchedule = Entity(Entity.Kind.SWITCH, "reglage_planification", tr(R.string.entity_set_schedule))
+        .icon("mdi:calendar-clock").category(Entity.CATEGORY_CONFIG)
+    private val setSleepTime = Entity(Entity.Kind.TEXT, "reglage_heure_extinction", tr(R.string.entity_set_sleep_time))
+        .icon("mdi:weather-night").category(Entity.CATEGORY_CONFIG)
+    private val setWakeTime = Entity(Entity.Kind.TEXT, "reglage_heure_allumage", tr(R.string.entity_set_wake_time))
+        .icon("mdi:weather-sunny").category(Entity.CATEGORY_CONFIG)
+    private val setAllowedUrls = Entity(Entity.Kind.TEXT, "reglage_adresses_autorisees", tr(R.string.entity_set_allowed_urls))
+        .icon("mdi:shield-check-outline").category(Entity.CATEGORY_CONFIG)
+
     private val entities = listOf(
         mediaEntity, screenCamera, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
@@ -168,8 +178,46 @@ class ApiService : Service(), EsphomeServer.Handler {
         setListen, setOnDevice, setSensitivity, setScreensaver, setScreensaverMinutes, setReturnSeconds,
         setAutoUpdate, setHandle, setUrl,
         motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake,
-        batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot
+        batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot,
+        setSchedule, setSleepTime, setWakeTime, setAllowedUrls
     )
+
+    /**
+     * Planification : éteint l'écran à l'heure du coucher et le rallume à l'heure du réveil.
+     * Seuls les passages d'une période à l'autre agissent : un allumage manuel (toucher, HA)
+     * pendant la nuit reste possible.
+     */
+    private var lastNight: Boolean? = null
+    private val scheduleCheck = object : Runnable {
+        override fun run() {
+            val prefs = Prefs(this@ApiService)
+            if (prefs.scheduleEnabled) {
+                val night = isNight(prefs.sleepTime, prefs.wakeTime)
+                if (night != null && lastNight != null && night != lastNight) setScreen(!night)
+                lastNight = night
+            } else {
+                lastNight = null
+            }
+            main.postDelayed(this, 20_000)
+        }
+    }
+
+    private fun minutes(time: String): Int? {
+        val parts = time.trim().split(":", "h", "H")
+        val h = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: return null
+        val m = parts.getOrNull(1)?.trim()?.ifEmpty { "0" }?.toIntOrNull() ?: 0
+        if (h !in 0..23 || m !in 0..59) return null
+        return h * 60 + m
+    }
+
+    /** Vrai entre l'heure d'extinction et l'heure d'allumage (la plage peut passer minuit). */
+    private fun isNight(sleep: String, wake: String): Boolean? {
+        val s = minutes(sleep) ?: return null
+        val w = minutes(wake) ?: return null
+        if (s == w) return null
+        val now = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) * 60 + it.get(java.util.Calendar.MINUTE) }
+        return if (s < w) now in s until w else now >= s || now < w
+    }
 
     /** Inactivité : capteur arrondi à 10 s, et « activité » selon le délai réglé. */
     private var lastIdleReported = -1L
@@ -353,6 +401,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.postDelayed(updateCheck, 60_000)
         main.postDelayed(micReport, 5_000)
         main.postDelayed(idleReport, 3_000)
+        main.postDelayed(scheduleCheck, 10_000)
         main.postDelayed(wifiReport, 5_000)
         alertOverlay = AlertOverlay(this) { server?.setState(alertShown, false) }
         cameraOverlay = CameraOverlay(this) { server?.setState(alertShown, alertOverlay.isShowing) }
@@ -396,6 +445,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.removeCallbacks(updateCheck)
         main.removeCallbacks(micReport)
         main.removeCallbacks(idleReport)
+        main.removeCallbacks(scheduleCheck)
         main.removeCallbacks(wifiReport)
         Updater.removeListener(updateListener)
         alertOverlay.close(notify = false)
@@ -469,6 +519,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 entity === setMotionWake -> prefs.motionWakesScreen = state
                 entity === setAutoUpdate -> prefs.autoUpdate = state
                 entity === setStartOnBoot -> prefs.startOnBoot = state
+                entity === setSchedule -> prefs.scheduleEnabled = state
                 entity === setSystemBrightness -> {
                     prefs.systemBrightness = state
                     // L'autorisation ne peut être donnée que sur la tablette : on ouvre l'écran d'Android
@@ -491,6 +542,13 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     override fun onText(entity: Entity, value: String) {
         main.post {
+            if (entity === setSleepTime || entity === setWakeTime) {
+                val time = value.trim()
+                if (minutes(time) != null) {
+                    if (entity === setSleepTime) Prefs(this).sleepTime = time else Prefs(this).wakeTime = time
+                }
+            }
+            if (entity === setAllowedUrls) Prefs(this).allowedUrls = value.trim()
             if (entity === setSaverUrl) {
                 Prefs(this).screensaverUrl = value.trim()
             }
@@ -521,6 +579,10 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(setSaverUrl, prefs.screensaverUrl)
         srv.setState(setSystemBrightness, prefs.systemBrightness)
         srv.setState(setStartOnBoot, prefs.startOnBoot)
+        srv.setState(setSchedule, prefs.scheduleEnabled)
+        srv.setState(setSleepTime, prefs.sleepTime)
+        srv.setState(setWakeTime, prefs.wakeTime)
+        srv.setState(setAllowedUrls, prefs.allowedUrls)
         srv.setState(setActivitySeconds, prefs.activitySeconds.toFloat())
         srv.setState(setMotion, prefs.motionEnabled)
         srv.setState(setMotionWake, prefs.motionWakesScreen)

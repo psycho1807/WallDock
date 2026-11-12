@@ -17,6 +17,8 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Redémarrage automatique : WallDock se relance quand la tablette redémarre (coupure de courant), même s'il n'est pas l'écran d'accueil (il faut l'autorisation « afficher par-dessus les autres applis »).
 - Écran de veille : horloge, ou une page de votre choix (une vue du tableau de bord, par exemple `/lovelace/veille`).
 - Luminosité de la fenêtre WallDock, ou du système entier en option (autorisation « Modifier les paramètres système »).
+- Planification : écran éteint chaque nuit (heures d'extinction et d'allumage réglables, aussi depuis HA).
+- Liste blanche d'adresses : seules les adresses autorisées s'ouvrent dans le tableau de bord (Home Assistant l'est toujours).
 - Écran de secours quand Home Assistant ne répond pas.
 - Détection de mouvement avec la caméra frontale : l'écran s'allume quand quelqu'un passe, capteur « Mouvement » dans HA (les images restent sur la tablette).
 - Mises à jour automatiques depuis les releases GitHub (désactivables).
@@ -96,8 +98,9 @@ Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser
 | Dock d'applis + retour auto au tableau de bord | ✅ | ✅ (lanceur d'applis, réglable) |
 | Verrouillage kiosque complet (« device owner », blocage des boutons, de la barre d'état) | ❌ (barres masquées seulement) | ✅ |
 | Administration à distance (page web, Fully Cloud), MQTT, API REST | ❌ (tout passe par HA) | ✅ |
-| Planification veille/réveil intégrée | ❌ (à faire avec une automatisation HA) | ✅ |
-| Navigateur complet (onglets, PDF, liste blanche d'adresses…) | ❌ | ✅ |
+| Planification veille/réveil intégrée | ✅ | ✅ |
+| Liste blanche d'adresses | ✅ | ✅ |
+| Navigateur complet (onglets, PDF…) | ❌ | ✅ |
 | Distribution | GitHub / Obtainium (Play Store prévu) | Play Store et site officiel |
 
 En résumé : si vous voulez un écran mural Home Assistant avec un assistant vocal, gratuit, WallDock est fait pour ça. Si vous avez besoin d'un verrouillage strict (tablette en accès public), d'une gestion de flotte ou d'un navigateur très configurable, Fully reste la référence.
@@ -128,7 +131,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 - Detailed setup for wall tablets (home screen, battery optimization on Samsung, Xiaomi, Honor/Huawei…), what each permission is for, and an honest comparison with Fully Kiosk: see the French sections above.
 - Motion detection with the front camera (screen wakes up, "Motion" sensor in HA; images never leave the tablet).
-- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, start on boot (power cut), screensaver (clock or any dashboard page), optional system brightness, offline fallback screen, automatic updates from GitHub releases.
+- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, start on boot (power cut), nightly screen schedule, URL whitelist, screensaver (clock or any dashboard page), optional system brightness, offline fallback screen, automatic updates from GitHub releases.
 - Monitoring sensors: battery level and temperature, Wi-Fi signal, inactivity time and a screen-activity binary sensor.
 - Native ESPHome API integration (auto-discovered, **encrypted**: Home Assistant creates the Noise key on its own at the first connection): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.

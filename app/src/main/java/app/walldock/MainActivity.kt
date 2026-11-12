@@ -93,6 +93,15 @@ class MainActivity : Activity(), DashboardController {
         web.settings.domStorageEnabled = true
         web.settings.mediaPlaybackRequiresUserGesture = false
         web.webViewClient = object : WebViewClient() {
+            // Liste blanche : les liens vers des adresses non autorisées sont bloqués
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                if (!request.isForMainFrame) return false
+                val url = request.url.toString()
+                if (prefs.isUrlAllowed(url)) return false
+                toast(tr(R.string.url_blocked, request.url.host ?: url))
+                return true
+            }
+
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 // Seule la page principale compte (pas une image ou un script)
                 if (request.isForMainFrame) showOffline(tr(R.string.page_failed, error.description.toString()))

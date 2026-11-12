@@ -114,6 +114,43 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_ACTIVITY_SECONDS, 60)
         set(value) = sp.edit().putInt(KEY_ACTIVITY_SECONDS, value).apply()
 
+    /** Planification : écran éteint chaque nuit entre [sleepTime] et [wakeTime] (« HH:mm »). */
+    var scheduleEnabled: Boolean
+        get() = sp.getBoolean(KEY_SCHEDULE, false)
+        set(value) = sp.edit().putBoolean(KEY_SCHEDULE, value).apply()
+
+    var sleepTime: String
+        get() = sp.getString(KEY_SLEEP_TIME, "23:00") ?: "23:00"
+        set(value) = sp.edit().putString(KEY_SLEEP_TIME, value).apply()
+
+    var wakeTime: String
+        get() = sp.getString(KEY_WAKE_TIME, "07:00") ?: "07:00"
+        set(value) = sp.edit().putString(KEY_WAKE_TIME, value).apply()
+
+    /**
+     * Adresses autorisées dans le tableau de bord (une par ligne ou séparées par des virgules :
+     * nom de domaine ou début d'adresse). Vide = tout est autorisé. HA est toujours autorisé.
+     */
+    var allowedUrls: String
+        get() = sp.getString(KEY_ALLOWED_URLS, "") ?: ""
+        set(value) = sp.edit().putString(KEY_ALLOWED_URLS, value).apply()
+
+    /** Vrai si l'adresse peut être ouverte (liste blanche). */
+    fun isUrlAllowed(url: String): Boolean {
+        val rules = allowedUrls.split(',', '\n', ';').map { it.trim() }.filter { it.isNotEmpty() }
+        if (rules.isEmpty()) return true
+        if (url.startsWith("about:") || url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("javascript:")) return true
+        val uri = android.net.Uri.parse(url)
+        val host = uri.host?.lowercase() ?: return false
+        val haHost = android.net.Uri.parse(haUrl).host?.lowercase()
+        if (host == haHost) return true
+        return rules.any { rule ->
+            val r = rule.lowercase()
+            if (r.contains("://")) url.lowercase().startsWith(r)
+            else host == r.removePrefix("*.") || host.endsWith("." + r.removePrefix("*."))
+        }
+    }
+
     var jarvisOnDevice: Boolean
         get() = sp.getBoolean(KEY_JARVIS_ON_DEVICE, true)
         set(value) = sp.edit().putBoolean(KEY_JARVIS_ON_DEVICE, value).apply()
@@ -140,6 +177,10 @@ class Prefs(context: Context) {
         private const val KEY_JARVIS_ON_DEVICE = "jarvis_on_device"
         private const val KEY_JARVIS_SENSITIVITY = "jarvis_sensitivity"
         private const val KEY_START_ON_BOOT = "start_on_boot"
+        private const val KEY_SCHEDULE = "schedule_enabled"
+        private const val KEY_SLEEP_TIME = "schedule_sleep"
+        private const val KEY_WAKE_TIME = "schedule_wake"
+        private const val KEY_ALLOWED_URLS = "allowed_urls"
         private const val KEY_SAVER_URL = "screensaver_url"
         private const val KEY_SYSTEM_BRIGHTNESS = "system_brightness"
         private const val KEY_ACTIVITY_SECONDS = "activity_seconds"

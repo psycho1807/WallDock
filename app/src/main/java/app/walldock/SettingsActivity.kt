@@ -40,6 +40,10 @@ class SettingsActivity : Activity() {
     private lateinit var saverUrlField: EditText
     private lateinit var systemBrightnessCheck: CheckBox
     private lateinit var bootCheck: CheckBox
+    private lateinit var scheduleCheck: CheckBox
+    private lateinit var sleepField: EditText
+    private lateinit var wakeField: EditText
+    private lateinit var allowedField: EditText
     private lateinit var updateCheck: CheckBox
     private lateinit var jarvisCheck: CheckBox
     private lateinit var onDeviceCheck: CheckBox
@@ -98,6 +102,23 @@ class SettingsActivity : Activity() {
         bootCheck.setTextColor(Color.WHITE)
         bootCheck.isChecked = prefs.startOnBoot
         column.addView(bootCheck)
+        scheduleCheck = CheckBox(this)
+        scheduleCheck.text = tr(R.string.settings_schedule)
+        scheduleCheck.setTextColor(Color.WHITE)
+        scheduleCheck.isChecked = prefs.scheduleEnabled
+        column.addView(scheduleCheck)
+        val times = LinearLayout(this)
+        times.orientation = LinearLayout.HORIZONTAL
+        sleepField = field(prefs.sleepTime, "23:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        wakeField = field(prefs.wakeTime, "07:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        times.addView(label(tr(R.string.settings_schedule_off)))
+        times.addView(sleepField, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        times.addView(label(tr(R.string.settings_schedule_on)))
+        times.addView(wakeField, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        column.addView(times)
+        column.addView(label(tr(R.string.settings_allowed_urls)))
+        allowedField = field(prefs.allowedUrls, tr(R.string.settings_allowed_urls_hint), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI)
+        column.addView(allowedField)
 
         column.addView(label(tr(R.string.settings_handle)))
         handleGroup = RadioGroup(this)
@@ -344,6 +365,10 @@ class SettingsActivity : Activity() {
                 prefs.autoUpdate = updateCheck.isChecked
                 prefs.screensaverUrl = saverUrlField.text.toString().trim()
                 prefs.startOnBoot = bootCheck.isChecked
+                prefs.scheduleEnabled = scheduleCheck.isChecked
+                sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
+                wakeField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.wakeTime = it }
+                prefs.allowedUrls = allowedField.text.toString().trim()
                 prefs.systemBrightness = systemBrightnessCheck.isChecked
                 if (systemBrightnessCheck.isChecked && !Settings.System.canWrite(this)) {
                     try {

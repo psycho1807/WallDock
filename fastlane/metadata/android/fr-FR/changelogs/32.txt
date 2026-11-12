@@ -1,0 +1,3 @@
+• Planification : l'écran s'éteint chaque nuit et se rallume le matin (heures réglables, aussi depuis HA).
+• Liste blanche d'adresses : seules les adresses autorisées s'ouvrent.
+• Les mises à jour signalent dans HA quand elles attendent une confirmation sur l'écran.

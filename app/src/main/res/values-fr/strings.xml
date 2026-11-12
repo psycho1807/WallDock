@@ -226,4 +226,14 @@
     <string name="settings_start_on_boot">Lancer WallDock au démarrage de la tablette (coupure de courant, redémarrage)</string>
     <string name="status_home_warning">Sans cela, après une coupure de courant, la tablette peut rester sur l’accueil Android si Android bloque le lancement automatique. Conseillé sur une tablette murale.</string>
     <string name="upd_waiting_screen">La version %1$s attend : confirmez « Mettre à jour » sur l’écran de la tablette</string>
+    <string name="url_blocked">%1$s n’est pas autorisé sur cette tablette</string>
+    <string name="entity_set_schedule">Planification de l’écran</string>
+    <string name="entity_set_sleep_time">Extinction de l’écran à</string>
+    <string name="entity_set_wake_time">Allumage de l’écran à</string>
+    <string name="entity_set_allowed_urls">Adresses autorisées</string>
+    <string name="settings_schedule">Éteindre l’écran chaque nuit</string>
+    <string name="settings_schedule_off">Éteint à </string>
+    <string name="settings_schedule_on">  Allumé à </string>
+    <string name="settings_allowed_urls">Adresses autorisées (vide = toutes). Domaines ou débuts d’adresse, séparés par des virgules. Home Assistant est toujours autorisé.</string>
+    <string name="settings_allowed_urls_hint">ex. youtube.com, https://mon-site.fr/page</string>
 </resources>
