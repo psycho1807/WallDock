@@ -179,6 +179,9 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val setStartOnBoot = Entity(Entity.Kind.SWITCH, "reglage_demarrage_auto", tr(R.string.entity_set_start_on_boot))
         .icon("mdi:power").category(Entity.CATEGORY_CONFIG)
 
+    private val nextAlarm = Entity(Entity.Kind.TEXT_SENSOR, "prochain_reveil", tr(R.string.entity_next_alarm))
+        .icon("mdi:alarm")
+
     // ---- Planification et liste blanche ----
     private val setSchedule = Entity(Entity.Kind.SWITCH, "reglage_planification", tr(R.string.entity_set_schedule))
         .icon("mdi:calendar-clock").category(Entity.CATEGORY_CONFIG)
@@ -223,8 +226,6 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     // ---- Réveils ----
 
-    private val nextAlarm = Entity(Entity.Kind.TEXT_SENSOR, "prochain_reveil", tr(R.string.entity_next_alarm))
-        .icon("mdi:alarm")
     private var sunriseTarget = -1f
     private var sunriseRestore = -1f
     private var sunriseStart = 0L
