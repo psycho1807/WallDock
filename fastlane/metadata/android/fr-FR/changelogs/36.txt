@@ -1,0 +1,1 @@
+• Correction : l'écran des réglages plantait (depuis la 0.16.1).

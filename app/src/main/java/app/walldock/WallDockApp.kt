@@ -37,4 +37,6 @@ class WallDockApp : Application() {
 }
 
 /** Texte traduit selon la langue de la tablette. */
-fun tr(id: Int, vararg args: Any): String = WallDockApp.context.getString(id, *args)
+fun tr(id: Int, vararg args: Any): String =
+    // Sans argument, pas de mise en forme : un « % » dans le texte ferait planter getString(id, …)
+    if (args.isEmpty()) WallDockApp.context.getString(id) else WallDockApp.context.getString(id, *args)

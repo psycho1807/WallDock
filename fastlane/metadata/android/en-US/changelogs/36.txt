@@ -1,0 +1,1 @@
+• Fix: the settings screen crashed (since 0.16.1).
