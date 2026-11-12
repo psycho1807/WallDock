@@ -16,7 +16,8 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Réglages protégés par un code ; WallDock peut devenir l'écran d'accueil de la tablette (conseillé sur une tablette murale).
 - Redémarrage automatique : WallDock se relance quand la tablette redémarre (coupure de courant), même s'il n'est pas l'écran d'accueil (il faut l'autorisation « afficher par-dessus les autres applis »).
 - Zoom du tableau de bord (50 à 200 %) : plus d'informations à l'écran d'un coup, ou plus gros.
-- Écran de veille : horloge, ou une page de votre choix (une vue du tableau de bord, par exemple `/lovelace/veille`).
+- Écran de veille : horloge, une page de votre choix (une vue du tableau de bord, par exemple `/lovelace/veille`), ou un **diaporama photos** (album [Immich](https://immich.app/) ou dossier de la tablette).
+- **Calendrier** plein écran (jour, semaine, mois, agenda) avec les calendriers de Home Assistant, dans le dock ou via l'action `afficher_calendrier`.
 - Luminosité de la fenêtre WallDock, ou du système entier en option (autorisation « Modifier les paramètres système »).
 - Planification : écran éteint chaque nuit (heures d'extinction et d'allumage réglables, aussi depuis HA).
 - Liste blanche d'adresses : seules les adresses autorisées s'ouvrent dans le tableau de bord (Home Assistant l'est toujours).
@@ -39,9 +40,12 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Visage animé plein écran avec la question et la réponse, conversation qui s'enchaîne.
 - Annonces (`assist_satellite.announce`), minuteurs vocaux avec compte à rebours et sonnerie.
 - Dites « Stop » pour couper Jarvis ou la sonnerie d'un minuteur (modèle microWakeWord, sur la tablette).
+- **Écoute écran éteint** : Jarvis continue d'entendre « Hey Jarvis » quand l'écran est éteint ou qu'une autre appli est ouverte, et rallume l'écran (désactivable).
+- **Réveils** : réglés sur la tablette ou depuis HA (`ajouter_reveil`, `supprimer_reveil`), jours de la semaine, lever de soleil progressif (luminosité qui monte avant la sonnerie), répétition ; capteur « Prochain réveil » dans HA.
 
 **Lecteur multimédia**
 - La tablette apparaît comme `media_player` dans HA : musique, radio, Music Assistant, annonces, pause, volume, muet. La musique se met en pause quand Jarvis écoute.
+- **Lecteur Music Assistant synchronisé (Sendspin)** : cochez-le dans les réglages, activez le fournisseur Sendspin dans Music Assistant et acceptez la tablette une fois. Elle joue alors en parfaite synchronisation avec vos autres enceintes Sendspin (multiroom), son chiffré, volume réglable depuis MA.
 
 ## Installation
 
@@ -76,6 +80,7 @@ Avec [Obtainium](https://github.com/ImranR98/Obtainium), WallDock s'installe et 
 | Service de premier plan, verrou de veille, notifications | Garder la connexion à HA active en permanence (notification permanente obligatoire sous Android). |
 | Service d'accessibilité (facultatif) | Savoir si vous touchez l'écran dans une autre appli, pour ne pas revenir au tableau de bord pendant que vous l'utilisez. Il ne lit ni ne transmet aucun contenu. |
 | Modifier les paramètres système (facultatif) | Seulement si vous cochez « Régler la luminosité du système ». |
+| Alarmes exactes (`SCHEDULE_EXACT_ALARM`) | Faire sonner les réveils à l'heure pile, même tablette en veille. |
 | `REQUEST_INSTALL_PACKAGES` | Installer les mises à jour de WallDock. L'appli ne télécharge **que** l'APK de la dernière release publique de ce dépôt GitHub, et Android refuse toute mise à jour qui n'est pas signée avec la même clé que l'appli installée. |
 | `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Android 12+ : permet d'installer ces mises à jour sans confirmation (seulement pour WallDock lui-même, jamais pour une autre appli). |
 
@@ -103,6 +108,8 @@ Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser
 | Liste blanche d'adresses | ✅ | ✅ | ✅ |
 | Navigateur complet (onglets, PDF…) | ❌ | ✅ onglets, lecteur PDF | ✅ |
 | Interphone entre tablettes | ❌ | ✅ | ❌ |
+| Réveils, calendrier HA, diaporama Immich | ✅ | ✅ | ❌ (diaporama de dossier/URL seulement) |
+| Lecteur Music Assistant synchronisé (multiroom Sendspin) | ✅ | ✅ | ❌ |
 | Écran de la tablette visible et commandable depuis HA | capture seulement | ✅ en direct, clics et gestes | ✅ capture ; commande à distance via Fully Remote Admin |
 | Distribution | GitHub / Obtainium (Play Store prévu) | GitHub / Obtainium (Play Store prévu) | Play Store et site officiel |
 
@@ -147,6 +154,8 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 - Native ESPHome API integration (auto-discovered, **encrypted**: Home Assistant creates the Noise key on its own at the first connection): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.
 - **Media player** entity: music, radio, Music Assistant, announcements, pause and volume.
+- **Synchronised Music Assistant player (Sendspin)**: multi-room playback in sync with your other Sendspin speakers, encrypted.
+- Alarms (with sunrise light ramp, settable from HA), full-screen Home Assistant calendar, Immich / local-folder photo screensaver, and wake word listening with the screen off.
 
 Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/releases/latest), or with [Obtainium](https://github.com/ImranR98/Obtainium) to get updates straight from GitHub:
 

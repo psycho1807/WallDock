@@ -1,0 +1,5 @@
+• Lecteur Music Assistant synchronisé (Sendspin) : multiroom avec vos autres enceintes.
+• Réveils (lever de soleil progressif, réglables depuis HA) et capteur « Prochain réveil ».
+• Calendrier Home Assistant plein écran (jour, semaine, mois, agenda).
+• Écran de veille photos : album Immich ou dossier de la tablette.
+• Jarvis écoute aussi écran éteint et rallume l'écran.

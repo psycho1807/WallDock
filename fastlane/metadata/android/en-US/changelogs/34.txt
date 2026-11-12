@@ -1,0 +1,5 @@
+• Synchronised Music Assistant player (Sendspin): multi-room with your other speakers.
+• Alarms (sunrise light ramp, settable from HA) and a "Next alarm" sensor.
+• Full-screen Home Assistant calendar (day, week, month, agenda).
+• Photo screensaver: Immich album or a folder on the tablet.
+• Jarvis also listens with the screen off and turns it back on.
