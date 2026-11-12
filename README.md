@@ -87,7 +87,7 @@ Comparaison honnête, d'après la documentation publique de [Fully Kiosk Browser
 
 | | WallDock (gratuit) | [WallDock Pro](#walldock-pro) | Fully Kiosk (licence PLUS) |
 |---|---|---|---|
-| Prix | Gratuit, libre (GPL-3.0) | 4,99 € (achat unique, 3 tablettes, 14 jours d'essai) | 8,90 € par tablette (paiement unique) |
+| Prix | Gratuit, libre (GPL-3.0) | 4,99 € (achat unique, 3 tablettes, 3 jours d'essai) | 8,90 € par tablette (paiement unique) |
 | Tableau de bord plein écran, écran toujours allumé | ✅ | ✅ | ✅ |
 | Relance au démarrage | ✅ | ✅ | ✅ |
 | Intégration HA | ✅ API native ESPHome, découverte auto, chiffrée | ✅ + MQTT | ✅ intégration officielle « Fully Kiosk Browser » |
@@ -112,7 +112,7 @@ En résumé : si vous voulez un écran mural Home Assistant avec un assistant vo
 
 Une version **Pro** ajoute : mots de réveil au choix et mot personnalisé, interphone entre tablettes, écran de la tablette en direct dans Home Assistant (voir et toucher), kiosque verrouillé, administration à distance (page web + API REST), MQTT, onglets et lecteur PDF.
 
-- 📦 **Télécharger** : [WallDock-Pro-Releases](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) — **14 jours d'essai gratuit**, sans rien payer.
+- 📦 **Télécharger** : [WallDock-Pro-Releases](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) — **3 jours d'essai gratuit**, sans rien payer.
 - 🔑 **Licence** (achat unique, 4,99 €, 1 clé = 3 tablettes) : [becasseau.gumroad.com/l/walldock-pro](https://becasseau.gumroad.com/l/walldock-pro)
 - La version gratuite reste gratuite, complète et libre ; acheter la Pro est aussi une façon de soutenir le projet.
 
@@ -154,7 +154,7 @@ Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/re
 
  The app UI is available in English and French (it follows the tablet language).
 
-**WallDock Pro** adds wake word choice and a custom wake word, intercom between tablets, the live tablet screen in Home Assistant (view and touch), locked kiosk, remote admin page + REST API, MQTT, tabs and PDF viewer. [Download](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) (14-day free trial) · [Licence key](https://becasseau.gumroad.com/l/walldock-pro) (one-time €4.99, 3 tablets).
+**WallDock Pro** adds wake word choice and a custom wake word, intercom between tablets, the live tablet screen in Home Assistant (view and touch), locked kiosk, remote admin page + REST API, MQTT, tabs and PDF viewer. [Download](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) (3-day free trial) · [Licence key](https://becasseau.gumroad.com/l/walldock-pro) (one-time €4.99, 3 tablets).
 
 Support the project: [Ko-fi](https://ko-fi.com/psycho1807)
 
