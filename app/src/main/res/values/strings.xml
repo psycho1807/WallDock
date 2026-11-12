@@ -290,4 +290,6 @@
     <string name="sendspin_connected">Connected to Music Assistant</string>
     <string name="sendspin_playing">Playing music</string>
     <string name="sendspin_error">Port 8928 is already in use</string>
+    <string name="entity_last_crash">Last error</string>
+    <string name="no_crash">none</string>
 </resources>

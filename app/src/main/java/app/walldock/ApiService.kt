@@ -67,6 +67,8 @@ class ApiService : Service(), EsphomeServer.Handler {
 
     private val updateStatus = Entity(Entity.Kind.TEXT_SENSOR, "mise_a_jour", tr(R.string.entity_mise_a_jour))
         .icon("mdi:update").category(Entity.CATEGORY_DIAGNOSTIC)
+    private val lastCrash = Entity(Entity.Kind.TEXT_SENSOR, "derniere_erreur", tr(R.string.entity_last_crash))
+        .icon("mdi:bug").category(Entity.CATEGORY_DIAGNOSTIC)
     private val installUpdate = Entity(Entity.Kind.BUTTON, "installer_mise_a_jour", tr(R.string.entity_installer_mise_a_jour))
         .icon("mdi:download").category(Entity.CATEGORY_CONFIG)
 
@@ -279,6 +281,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         .icon("mdi:shield-check-outline").category(Entity.CATEGORY_CONFIG)
 
     private val entities = listOf(
+        lastCrash,
         mediaEntity, screenCamera, jarvisState, talkToJarvis, volume, stopRinging, detectionMode, wakeScore, micLevel, audioSent,
         battery, charging, screen, brightness, currentApp, openSelect, alertShown, backToDashboard, reload,
         updateStatus, installUpdate,
@@ -569,6 +572,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(openSelect, DASHBOARD_OPTION)
         srv.setState(alertShown, false)
         srv.setState(updateStatus, Updater.status)
+        reportLastCrash()
         Updater.addListener(updateListener)
         main.postDelayed(updateCheck, 60_000)
         main.postDelayed(micReport, 5_000)
@@ -643,6 +647,22 @@ class ApiService : Service(), EsphomeServer.Handler {
         server?.stop()
         server = null
         super.onDestroy()
+    }
+
+    /** Dernier plantage de l'appli : début dans le capteur, trace complète dans les journaux. */
+    private fun reportLastCrash() {
+        val text = getSharedPreferences("walldock_crash", MODE_PRIVATE).getString("last", null)
+        if (text == null) {
+            server?.setState(lastCrash, tr(R.string.no_crash))
+            return
+        }
+        // L'état d'un capteur HA est limité à 255 caractères : cause + première ligne de notre code
+        val lines = text.lines()
+        val ours = lines.firstOrNull { it.contains("app.walldock") }?.trim()?.removePrefix("at ") ?: ""
+        val head = lines.first()
+        val short = if (ours.isEmpty()) head else "$head | $ours"
+        server?.setState(lastCrash, if (short.length > 250) short.take(249) + "…" else short)
+        android.util.Log.e("WallDock", "Dernier plantage :\n$text")
     }
 
     /** Nombre de connexions Home Assistant en cours. */

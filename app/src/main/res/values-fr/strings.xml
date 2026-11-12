@@ -289,4 +289,6 @@
     <string name="sendspin_connected">Connecté à Music Assistant</string>
     <string name="sendspin_playing">Musique en cours</string>
     <string name="sendspin_error">Le port 8928 est déjà utilisé</string>
+    <string name="entity_last_crash">Dernière erreur</string>
+    <string name="no_crash">aucune</string>
 </resources>
