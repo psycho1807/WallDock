@@ -1,0 +1,2 @@
+• « Hey Jarvis » se déclenche beaucoup moins pour rien : le mot doit être entendu plusieurs fois d'affilée, et les voix apprises ne baissent plus le seuil.
+• Nouvelle sensibilité « Basse » pour les pièces bruyantes (télé à côté).

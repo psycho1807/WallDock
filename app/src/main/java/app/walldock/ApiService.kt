@@ -125,9 +125,13 @@ class ApiService : Service(), EsphomeServer.Handler {
     )
     private var motionDetector: MotionDetector? = null
 
-    private val sensitivityLabels get() = listOf(
-        tr(R.string.sens_short_normal), tr(R.string.sens_short_high), tr(R.string.sens_short_very_high)
+    /** Libellés par index enregistré (0 normale, 1 élevée, 2 très élevée, 3 basse). */
+    private val sensitivityByIndex get() = listOf(
+        tr(R.string.sens_short_normal), tr(R.string.sens_short_high), tr(R.string.sens_short_very_high),
+        tr(R.string.sens_short_low)
     )
+    /** Options proposées dans HA, de la plus stricte à la plus large. */
+    private val sensitivityLabels get() = Jarvis.SENSITIVITY_ORDER.map { sensitivityByIndex[it] }
     private val handleLabels get() = linkedMapOf(
         Prefs.HANDLE_BOTTOM_RIGHT to tr(R.string.handle_bottom_right),
         Prefs.HANDLE_BOTTOM_LEFT to tr(R.string.handle_bottom_left),
@@ -431,7 +435,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         val srv = server ?: return
         srv.setState(setListen, prefs.jarvisWakeWord)
         srv.setState(setOnDevice, prefs.jarvisOnDevice)
-        srv.setState(setSensitivity, sensitivityLabels.getOrElse(prefs.jarvisSensitivity) { sensitivityLabels[0] })
+        srv.setState(setSensitivity, sensitivityByIndex.getOrElse(prefs.jarvisSensitivity) { sensitivityByIndex[0] })
         srv.setState(setScreensaver, prefs.screensaverEnabled)
         srv.setState(setScreensaverMinutes, prefs.screensaverMinutes.toFloat())
         srv.setState(setReturnSeconds, prefs.returnSeconds.toFloat())
@@ -650,7 +654,7 @@ class ApiService : Service(), EsphomeServer.Handler {
     override fun onSelect(entity: Entity, option: String) {
         main.post {
             if (entity === setSensitivity) {
-                val index = sensitivityLabels.indexOf(option)
+                val index = sensitivityByIndex.indexOf(option)
                 if (index >= 0) {
                     Prefs(this).jarvisSensitivity = index
                     jarvis?.reloadVoiceSettings()

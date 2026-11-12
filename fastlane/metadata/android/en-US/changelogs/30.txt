@@ -1,0 +1,2 @@
+• "Hey Jarvis" triggers far less by mistake: the word must be heard several times in a row, and learned voices no longer lower the threshold.
+• New "Low" sensitivity for noisy rooms (TV nearby).

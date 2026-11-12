@@ -146,9 +146,9 @@
     <string name="entity_lecteur">Player</string>
     <string name="detect_tablet_voices">Tablet (%1$d learned voices)</string>
     <string name="settings_sensitivity">“Hey Jarvis” sensitivity</string>
-    <string name="sensitivity_normal">Normal</string>
+    <string name="sensitivity_normal">Normal (recommended)</string>
     <string name="sensitivity_high">High (recognizes more easily, may trigger by mistake now and then)</string>
-    <string name="sensitivity_very_high">Very high (recommended with learned voices)</string>
+    <string name="sensitivity_very_high">Very high (only if Jarvis hardly ever hears you)</string>
     <string name="voice_help">Learning a voice: say “Hey Jarvis” 8 times, then let the room sound as usual for 20 seconds. Jarvis then knows how you say it and can be more sensitive without triggering by mistake. Repeat for each person in the house.</string>
     <string name="voice_learn">Learn a voice</string>
     <string name="voice_forget">Forget learned voices</string>
@@ -162,7 +162,7 @@
     <string name="voice_not_heard_stop">I can’t hear “Hey Jarvis”. Get closer to the tablet and try again.</string>
     <string name="voice_room">Now talk normally, or let the TV play, WITHOUT saying “Hey Jarvis”…\n(20 seconds)</string>
     <string name="voice_computing">Learning…</string>
-    <string name="voice_done">Done! Jarvis now knows this voice. Choose the “Very high” sensitivity and save.</string>
+    <string name="voice_done">Done! Jarvis now knows this voice and will only answer voices it has learned.</string>
     <string name="voice_failed">Learning failed, please try again.</string>
     <string name="entity_capture_ecran">Screen capture</string>
     <string name="camera_default_title">Camera</string>
@@ -210,4 +210,6 @@
     <string name="motion_camera_error_text">Camera error (%1$s), retrying in 1 min</string>
     <string name="settings_motion">Motion detection with the front camera</string>
     <string name="settings_motion_help">Turns the screen on when someone passes and gives a “Motion” sensor to Home Assistant. Images stay on the tablet and are never recorded. Sensitivity can be set from Home Assistant.</string>
+    <string name="sensitivity_low">Low (noisy room, TV nearby: fewer false triggers)</string>
+    <string name="sens_short_low">Low</string>
 </resources>

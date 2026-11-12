@@ -46,7 +46,9 @@ class Jarvis(
     @Volatile
     private var wakeThreshold = 0.5f
     @Volatile
-    private var verifierGate = 0.2f
+    private var wakePatience = 2
+    /** Nombre de prédictions consécutives au-dessus du seuil (80 ms chacune). */
+    private var wakeStreak = 0
 
     /** Reçoit (score, empreintes) pendant l'apprentissage d'une voix ; rien n'est déclenché. */
     @Volatile
@@ -55,8 +57,9 @@ class Jarvis(
     /** Relit la sensibilité et les voix apprises (réglages modifiés ou nouvel apprentissage). */
     fun reloadVoiceSettings() {
         val sensitivity = Prefs(context).jarvisSensitivity
-        wakeThreshold = WAKE_THRESHOLDS[sensitivity.coerceIn(0, 2)]
-        verifierGate = VERIFIER_GATES[sensitivity.coerceIn(0, 2)]
+        val level = sensitivity.coerceIn(0, WAKE_THRESHOLDS.size - 1)
+        wakeThreshold = WAKE_THRESHOLDS[level]
+        wakePatience = WAKE_PATIENCE[level]
         verifier = VoiceVerifier.load(context)
     }
 
@@ -555,16 +558,18 @@ class Jarvis(
                     // Apprentissage d'une voix en cours : on transmet, on ne déclenche rien
                     if (score >= 0f) sink(score, wake.lastFeatures())
                 } else if (score >= 0f) {
+                    // Le mot doit être entendu sur plusieurs prédictions d'affilée (un bruit bref,
+                    // une syllabe de la télé ne suffisent plus), puis, si des voix ont été apprises,
+                    // ressembler à l'une d'elles. Les voix apprises ne baissent jamais le seuil.
+                    wakeStreak = if (score >= wakeThreshold) wakeStreak + 1 else 0
                     val now = android.os.SystemClock.elapsedRealtime()
-                    val voice = verifier
-                    val heard = if (voice != null) {
-                        score >= verifierGate && voice.predict(wake.lastFeatures()) >= VERIFIER_CUTOFF
-                    } else {
-                        score >= wakeThreshold
-                    }
-                    if (heard && now - lastDetection > 2_000) {
-                        lastDetection = now
-                        main.post { onLocalWakeWord() }
+                    if (wakeStreak >= wakePatience && now - lastDetection > 2_000) {
+                        val voice = verifier
+                        if (voice == null || voice.predict(wake.lastFeatures()) >= VERIFIER_CUTOFF) {
+                            lastDetection = now
+                            wakeStreak = 0
+                            main.post { onLocalWakeWord() }
+                        }
                     }
                 }
             }
@@ -743,10 +748,14 @@ class Jarvis(
         /** 1 024 échantillons = 64 ms de son par envoi. */
         private const val CHUNK_BYTES = 2_048
         /** Seuil de détection de « Hey Jarvis » (comme l'appli openWakeWord de HA). */
-        private val WAKE_THRESHOLDS = floatArrayOf(0.5f, 0.35f, 0.25f)
-        /** Avec des voix apprises : le modèle n'a qu'à « soupçonner » le mot, le filtre décide. */
-        private val VERIFIER_GATES = floatArrayOf(0.2f, 0.12f, 0.06f)
-        private const val VERIFIER_CUTOFF = 0.6f
+        /** Index : 0 normale, 1 élevée, 2 très élevée, 3 basse. */
+        private val WAKE_THRESHOLDS = floatArrayOf(0.5f, 0.4f, 0.3f, 0.65f)
+        private val WAKE_PATIENCE = intArrayOf(2, 2, 2, 3)
+        /** Avec des voix apprises : en plus du seuil, la voix doit ressembler à l'une d'elles. */
+        private const val VERIFIER_CUTOFF = 0.7f
+
+        /** Ordre d'affichage des sensibilités (de la plus stricte à la plus large). */
+        val SENSITIVITY_ORDER = intArrayOf(3, 0, 1, 2)
         /** Durée du bip de début d'écoute, remplacée par du silence dans le son envoyé à HA. */
         private const val BEEP_MUTE_MS = 300L
 

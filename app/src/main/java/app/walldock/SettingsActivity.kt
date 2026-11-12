@@ -162,8 +162,12 @@ class SettingsActivity : Activity() {
         column.addView(label(tr(R.string.settings_motion_help)))
         column.addView(label(tr(R.string.settings_sensitivity)))
         sensitivityGroup = RadioGroup(this)
-        val levels = listOf(tr(R.string.sensitivity_normal), tr(R.string.sensitivity_high), tr(R.string.sensitivity_very_high))
-        levels.forEachIndexed { index, text ->
+        val levels = listOf(
+            tr(R.string.sensitivity_normal), tr(R.string.sensitivity_high), tr(R.string.sensitivity_very_high),
+            tr(R.string.sensitivity_low)
+        )
+        Jarvis.SENSITIVITY_ORDER.forEach { index ->
+            val text = levels[index]
             val choice = RadioButton(this)
             choice.id = View.generateViewId()
             choice.text = text
