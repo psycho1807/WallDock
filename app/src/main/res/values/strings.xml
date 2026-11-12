@@ -241,4 +241,17 @@
     <string name="settings_zoom">Dashboard zoom in % (e.g. 80 = more content on screen, 120 = bigger; 50 to 200)</string>
     <string name="updates_play">This version comes from Google Play: updates are installed by the Play Store.</string>
     <string name="updates_play_status">Google Play version %1$s (updates by the Play Store)</string>
+    <string name="entity_set_listen_screen_off">Listen with screen off</string>
+    <string name="settings_listen_screen_off">Keep listening when the tablet screen is off or another app is open (the screen turns back on when Jarvis hears its wake word; uses a little more battery)</string>
+    <string name="photos_help">Photo screensaver (optional): an Immich album and/or a folder of the tablet, used instead of the clock (a screensaver page, below, takes priority).</string>
+    <string name="photos_immich_url">Immich address (e.g. http://192.168.1.20:2283)</string>
+    <string name="photos_immich_key">Immich API key (Account settings → API keys)</string>
+    <string name="photos_immich_album">Immich album link (or its ID)</string>
+    <string name="photos_folder_none">No photo folder chosen</string>
+    <string name="photos_folder_set">Photo folder: %1$s</string>
+    <string name="photos_folder_choose">Choose a photo folder on the tablet</string>
+    <string name="photos_folder_clear">Forget the photo folder</string>
+    <string name="photos_folder_unavailable">Folder picker not available on this tablet</string>
+    <string name="photos_seconds">Seconds per photo</string>
+    <string name="photos_none">No photo found for the screensaver (check the Immich settings or the folder)</string>
 </resources>

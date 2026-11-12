@@ -160,6 +160,22 @@ class ApiService : Service(), EsphomeServer.Handler {
         .icon("mdi:monitor-dashboard").category(Entity.CATEGORY_CONFIG)
     private val setSystemBrightness = Entity(Entity.Kind.SWITCH, "reglage_luminosite_systeme", tr(R.string.entity_set_system_brightness))
         .icon("mdi:brightness-auto").category(Entity.CATEGORY_CONFIG)
+    private val setListenScreenOff = Entity(Entity.Kind.SWITCH, "reglage_ecoute_ecran_eteint", tr(R.string.entity_set_listen_screen_off))
+        .icon("mdi:microphone-settings").category(Entity.CATEGORY_CONFIG)
+    /** Garde le processeur éveillé pendant l'écoute de Jarvis, écran éteint. */
+    private var listenLock: PowerManager.WakeLock? = null
+
+    private fun updateListenLock() {
+        val wanted = jarvis?.isRecording == true && Prefs(this).listenScreenOff
+        val lock = listenLock ?: getSystemService(PowerManager::class.java)
+            ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "walldock:listen")?.also {
+                it.setReferenceCounted(false)
+                listenLock = it
+            } ?: return
+        if (wanted && !lock.isHeld) lock.acquire()
+        else if (!wanted && lock.isHeld) lock.release()
+    }
+
     private val setStartOnBoot = Entity(Entity.Kind.SWITCH, "reglage_demarrage_auto", tr(R.string.entity_set_start_on_boot))
         .icon("mdi:power").category(Entity.CATEGORY_CONFIG)
 
@@ -181,7 +197,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         setAutoUpdate, setHandle, setUrl,
         motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake,
         batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot,
-        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setZoom
+        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setListenScreenOff, setZoom
     )
 
     /**
@@ -268,6 +284,7 @@ class ApiService : Service(), EsphomeServer.Handler {
                 server?.setState(motionStatus, motionStatusText())
             }
             reportVolume()
+            updateListenLock()
             main.postDelayed(this, 5_000)
         }
     }
@@ -374,7 +391,8 @@ class ApiService : Service(), EsphomeServer.Handler {
                 }
             }
         })
-        val assistant = Jarvis(this, srv) { wakeUp() }
+        // Mot de réveil entendu : on rallume l'écran (vrai écran éteint ou écran « éteint » de WallDock)
+        val assistant = Jarvis(this, srv) { if (!AppState.screenOn) setScreen(true) else wakeUp() }
         val tabletPlayer = TabletPlayer(this) { server?.setState(mediaEntity, it) }
         mediaPlayer = tabletPlayer
         assistant.onStateChanged = {
@@ -447,6 +465,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         main.removeCallbacks(updateCheck)
         main.removeCallbacks(micReport)
         main.removeCallbacks(idleReport)
+        listenLock?.let { if (it.isHeld) it.release() }
         main.removeCallbacks(scheduleCheck)
         main.removeCallbacks(wifiReport)
         Updater.removeListener(updateListener)
@@ -521,6 +540,10 @@ class ApiService : Service(), EsphomeServer.Handler {
                 entity === setMotionWake -> prefs.motionWakesScreen = state
                 entity === setAutoUpdate -> prefs.autoUpdate = state
                 entity === setStartOnBoot -> prefs.startOnBoot = state
+                entity === setListenScreenOff -> {
+                    prefs.listenScreenOff = state
+                    updateListenLock()
+                }
                 entity === setSchedule -> prefs.scheduleEnabled = state
                 entity === setSystemBrightness -> {
                     prefs.systemBrightness = state
@@ -582,6 +605,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(setSaverUrl, prefs.screensaverUrl)
         srv.setState(setSystemBrightness, prefs.systemBrightness)
         srv.setState(setStartOnBoot, prefs.startOnBoot)
+        srv.setState(setListenScreenOff, prefs.listenScreenOff)
         srv.setState(setSchedule, prefs.scheduleEnabled)
         srv.setState(setSleepTime, prefs.sleepTime)
         srv.setState(setWakeTime, prefs.wakeTime)

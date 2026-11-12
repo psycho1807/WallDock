@@ -38,9 +38,15 @@ class SettingsActivity : Activity() {
     private lateinit var saverCheck: CheckBox
     private lateinit var saverField: EditText
     private lateinit var saverUrlField: EditText
+    private lateinit var immichUrlField: EditText
+    private lateinit var immichKeyField: EditText
+    private lateinit var immichAlbumField: EditText
+    private lateinit var photoSecondsField: EditText
+    private lateinit var photoFolderText: TextView
     private lateinit var zoomField: EditText
     private lateinit var systemBrightnessCheck: CheckBox
     private lateinit var bootCheck: CheckBox
+    private lateinit var listenOffCheck: CheckBox
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
     private lateinit var wakeField: EditText
@@ -98,6 +104,30 @@ class SettingsActivity : Activity() {
         column.addView(label(tr(R.string.settings_zoom)))
         zoomField = field(prefs.zoom.toString(), "100", InputType.TYPE_CLASS_NUMBER)
         column.addView(zoomField)
+        // Écran de veille photos
+        column.addView(label(tr(R.string.photos_help)))
+        immichUrlField = field(prefs.immichUrl, tr(R.string.photos_immich_url), InputType.TYPE_TEXT_VARIATION_URI)
+        column.addView(immichUrlField)
+        immichKeyField = field(prefs.immichKey, tr(R.string.photos_immich_key), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        column.addView(immichKeyField)
+        immichAlbumField = field(prefs.immichAlbum, tr(R.string.photos_immich_album), InputType.TYPE_TEXT_VARIATION_URI)
+        column.addView(immichAlbumField)
+        photoFolderText = label(if (prefs.photoFolder.isBlank()) tr(R.string.photos_folder_none) else tr(R.string.photos_folder_set, Uri.parse(prefs.photoFolder).lastPathSegment ?: ""))
+        column.addView(photoFolderText)
+        column.addView(button(tr(R.string.photos_folder_choose)) {
+            try {
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQUEST_PHOTO_FOLDER)
+            } catch (e: Exception) {
+                toast(tr(R.string.photos_folder_unavailable))
+            }
+        })
+        column.addView(button(tr(R.string.photos_folder_clear)) {
+            prefs.photoFolder = ""
+            photoFolderText.text = tr(R.string.photos_folder_none)
+        })
+        column.addView(label(tr(R.string.photos_seconds)))
+        photoSecondsField = field(prefs.photoSeconds.toString(), "15", InputType.TYPE_CLASS_NUMBER)
+        column.addView(photoSecondsField)
         column.addView(label(tr(R.string.settings_saver_url)))
         saverUrlField = field(prefs.screensaverUrl, tr(R.string.settings_saver_url_hint), InputType.TYPE_TEXT_VARIATION_URI)
         column.addView(saverUrlField)
@@ -241,6 +271,11 @@ class SettingsActivity : Activity() {
                 requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), MainActivity.REQUEST_MIC)
             }
         })
+        listenOffCheck = CheckBox(this)
+        listenOffCheck.text = tr(R.string.settings_listen_screen_off)
+        listenOffCheck.setTextColor(Color.WHITE)
+        listenOffCheck.isChecked = prefs.listenScreenOff
+        column.addView(listenOffCheck)
         column.addView(button(tr(R.string.settings_test_jarvis)) { ApiService.instance?.jarvis?.talk() })
 
         column.addView(heading(tr(R.string.settings_updates), 18f))
@@ -333,6 +368,19 @@ class SettingsActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == REQUEST_PHOTO_FOLDER) {
+            val tree = data?.data
+            if (resultCode == RESULT_OK && tree != null) {
+                try {
+                    contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (e: Exception) {
+                    // autorisation temporaire seulement
+                }
+                prefs.photoFolder = tree.toString()
+                photoFolderText.text = tr(R.string.photos_folder_set, tree.lastPathSegment ?: "")
+            }
+            return
+        }
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         val uri = data?.data
@@ -379,8 +427,13 @@ class SettingsActivity : Activity() {
                 prefs.screensaverEnabled = saverCheck.isChecked
                 prefs.autoUpdate = updateCheck.isChecked
                 prefs.screensaverUrl = saverUrlField.text.toString().trim()
+                prefs.immichUrl = immichUrlField.text.toString().trim()
+                prefs.immichKey = immichKeyField.text.toString().trim()
+                prefs.immichAlbum = immichAlbumField.text.toString().trim()
+                photoSecondsField.text.toString().toIntOrNull()?.let { prefs.photoSeconds = it }
                 zoomField.text.toString().toIntOrNull()?.let { prefs.zoom = it }
                 prefs.startOnBoot = bootCheck.isChecked
+                prefs.listenScreenOff = listenOffCheck.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
                 wakeField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.wakeTime = it }
@@ -551,5 +604,9 @@ class SettingsActivity : Activity() {
         view.isAllCaps = false
         view.setOnClickListener { action() }
         return view
+    }
+
+    companion object {
+        private const val REQUEST_PHOTO_FOLDER = 52
     }
 }

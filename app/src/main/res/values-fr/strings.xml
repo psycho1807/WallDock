@@ -240,4 +240,17 @@
     <string name="settings_zoom">Zoom du tableau de bord en % (ex. 80 = plus de choses à l’écran, 120 = plus gros ; de 50 à 200)</string>
     <string name="updates_play">Cette version vient de Google Play : les mises à jour sont installées par le Play Store.</string>
     <string name="updates_play_status">Version Google Play %1$s (mises à jour par le Play Store)</string>
+    <string name="entity_set_listen_screen_off">Écoute écran éteint</string>
+    <string name="settings_listen_screen_off">Continuer d’écouter quand l’écran de la tablette est éteint ou qu’une autre appli est ouverte (l’écran se rallume quand Jarvis entend son mot ; consomme un peu plus de batterie)</string>
+    <string name="photos_help">Écran de veille photos (facultatif) : un album Immich et/ou un dossier de la tablette, à la place de l’horloge (une page d’écran de veille, plus bas, reste prioritaire).</string>
+    <string name="photos_immich_url">Adresse d’Immich (ex. http://192.168.1.20:2283)</string>
+    <string name="photos_immich_key">Clé d’API Immich (Paramètres du compte → Clés d’API)</string>
+    <string name="photos_immich_album">Lien de l’album Immich (ou son identifiant)</string>
+    <string name="photos_folder_none">Aucun dossier de photos choisi</string>
+    <string name="photos_folder_set">Dossier de photos : %1$s</string>
+    <string name="photos_folder_choose">Choisir un dossier de photos sur la tablette</string>
+    <string name="photos_folder_clear">Oublier le dossier de photos</string>
+    <string name="photos_folder_unavailable">Choix de dossier indisponible sur cette tablette</string>
+    <string name="photos_seconds">Secondes par photo</string>
+    <string name="photos_none">Aucune photo trouvée pour l’écran de veille (vérifiez les réglages Immich ou le dossier)</string>
 </resources>

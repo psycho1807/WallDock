@@ -156,6 +156,31 @@ class Prefs(context: Context) {
         get() = sp.getInt("dashboard_zoom", 100)
         set(value) = sp.edit().putInt("dashboard_zoom", value.coerceIn(50, 200)).apply()
 
+    /** Jarvis continue d'écouter quand l'écran de la tablette est éteint (verrou de veille partiel). */
+    var listenScreenOff: Boolean
+        get() = sp.getBoolean("listen_screen_off", true)
+        set(value) = sp.edit().putBoolean("listen_screen_off", value).apply()
+
+    // ---- Écran de veille photos : album Immich ou dossier de la tablette ----
+    var immichUrl: String
+        get() = sp.getString("immich_url", "") ?: ""
+        set(value) = sp.edit().putString("immich_url", value).apply()
+    var immichKey: String
+        get() = sp.getString("immich_key", "") ?: ""
+        set(value) = sp.edit().putString("immich_key", value).apply()
+    /** Lien de l'album Immich (ou son identifiant). */
+    var immichAlbum: String
+        get() = sp.getString("immich_album", "") ?: ""
+        set(value) = sp.edit().putString("immich_album", value).apply()
+    /** Dossier de photos choisi (adresse SAF) ; vide = aucun. */
+    var photoFolder: String
+        get() = sp.getString("photo_folder", "") ?: ""
+        set(value) = sp.edit().putString("photo_folder", value).apply()
+    /** Durée d'affichage de chaque photo (secondes). */
+    var photoSeconds: Int
+        get() = sp.getInt("photo_seconds", 15)
+        set(value) = sp.edit().putInt("photo_seconds", value.coerceIn(3, 600)).apply()
+
     var jarvisOnDevice: Boolean
         get() = sp.getBoolean(KEY_JARVIS_ON_DEVICE, true)
         set(value) = sp.edit().putBoolean(KEY_JARVIS_ON_DEVICE, value).apply()

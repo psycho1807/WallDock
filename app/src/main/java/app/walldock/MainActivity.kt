@@ -54,6 +54,8 @@ class MainActivity : Activity(), DashboardController {
     private lateinit var screensaverContent: View
     /** Page affichée en écran de veille (si une adresse est réglée). */
     private var saverWeb: WebView? = null
+    /** Diaporama photos de l'écran de veille (Immich ou dossier). */
+    private var slideshow: PhotoSlideshow? = null
     private var lastTouch = 0L
     private var swallowGesture = false
     private val screensaverCheck = object : Runnable {
@@ -395,7 +397,7 @@ class MainActivity : Activity(), DashboardController {
                 showSaverPage()
                 screensaver.visibility = View.VISIBLE
             }
-            if (saverWeb?.visibility == View.VISIBLE) return
+            if (saverWeb?.visibility == View.VISIBLE || screensaverContent.visibility != View.VISIBLE) return
             // Déplacer légèrement l'horloge pour ne pas marquer l'écran
             val range = dp(60)
             screensaverContent.translationX = (Math.random() * 2 * range - range).toFloat()
@@ -412,7 +414,13 @@ class MainActivity : Activity(), DashboardController {
         val address = prefs.screensaverUrl.trim()
         if (address.isEmpty()) {
             saverWeb?.visibility = View.GONE
-            screensaverContent.visibility = View.VISIBLE
+            val photos = slideshow ?: PhotoSlideshow(this, screensaver).also { slideshow = it }
+            if (photos.isConfigured()) {
+                screensaverContent.visibility = View.GONE
+                photos.start()
+            } else {
+                screensaverContent.visibility = View.VISIBLE
+            }
             return
         }
         val page = saverWeb ?: WebView(this).also {
@@ -434,6 +442,7 @@ class MainActivity : Activity(), DashboardController {
     private fun hideScreensaver() {
         if (screensaver.visibility != View.VISIBLE) return
         screensaver.visibility = View.GONE
+        slideshow?.stop()
         saverWeb?.let {
             it.stopLoading()
             it.loadUrl("about:blank")
