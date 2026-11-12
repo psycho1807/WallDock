@@ -237,4 +237,6 @@
     <string name="settings_schedule_on">  On at </string>
     <string name="settings_allowed_urls">Allowed addresses (empty = all). Domains or address starts, separated by commas. Home Assistant is always allowed.</string>
     <string name="settings_allowed_urls_hint">e.g. youtube.com, https://my-site.fr/page</string>
+    <string name="entity_set_zoom">Dashboard zoom</string>
+    <string name="settings_zoom">Dashboard zoom in % (e.g. 80 = more content on screen, 120 = bigger; 50 to 200)</string>
 </resources>

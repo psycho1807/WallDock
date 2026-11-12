@@ -236,4 +236,6 @@
     <string name="settings_schedule_on">  Allumé à </string>
     <string name="settings_allowed_urls">Adresses autorisées (vide = toutes). Domaines ou débuts d’adresse, séparés par des virgules. Home Assistant est toujours autorisé.</string>
     <string name="settings_allowed_urls_hint">ex. youtube.com, https://mon-site.fr/page</string>
+    <string name="entity_set_zoom">Zoom du tableau de bord</string>
+    <string name="settings_zoom">Zoom du tableau de bord en % (ex. 80 = plus de choses à l’écran, 120 = plus gros ; de 50 à 200)</string>
 </resources>

@@ -103,6 +103,8 @@ class ApiService : Service(), EsphomeServer.Handler {
     private val setReturnSeconds = Entity(Entity.Kind.NUMBER, "reglage_retour_tableau", tr(R.string.entity_set_return))
         .unit("s").range(10f, 3600f, 10f).icon("mdi:keyboard-return").category(Entity.CATEGORY_CONFIG)
         .also { it.numberMode = Entity.NUMBER_MODE_BOX }
+    private val setZoom = Entity(Entity.Kind.NUMBER, "reglage_zoom", tr(R.string.entity_set_zoom))
+        .unit("%").range(50f, 200f, 5f).icon("mdi:magnify-plus-outline").category(Entity.CATEGORY_CONFIG)
     private val setAutoUpdate = Entity(Entity.Kind.SWITCH, "reglage_mises_a_jour_auto", tr(R.string.entity_set_auto_update))
         .icon("mdi:update").category(Entity.CATEGORY_CONFIG)
     private val setHandle = Entity(Entity.Kind.SELECT, "reglage_poignee_dock", tr(R.string.entity_set_handle))
@@ -179,7 +181,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         setAutoUpdate, setHandle, setUrl,
         motionSensor, motionStatus, setMotion, setMotionSensitivity, setMotionWake,
         batteryTemp, wifiSignal, idleTime, activity, setActivitySeconds, setSaverUrl, setSystemBrightness, setStartOnBoot,
-        setSchedule, setSleepTime, setWakeTime, setAllowedUrls
+        setSchedule, setSleepTime, setWakeTime, setAllowedUrls, setZoom
     )
 
     /**
@@ -573,6 +575,7 @@ class ApiService : Service(), EsphomeServer.Handler {
         srv.setState(setScreensaver, prefs.screensaverEnabled)
         srv.setState(setScreensaverMinutes, prefs.screensaverMinutes.toFloat())
         srv.setState(setReturnSeconds, prefs.returnSeconds.toFloat())
+        srv.setState(setZoom, prefs.zoom.toFloat())
         srv.setState(setAutoUpdate, prefs.autoUpdate)
         srv.setState(setHandle, handleLabels[prefs.handlePosition] ?: handleLabels.values.first())
         srv.setState(setUrl, prefs.haUrl)
@@ -779,6 +782,10 @@ class ApiService : Service(), EsphomeServer.Handler {
                 reportSettings()
             } else if (entity === setReturnSeconds) {
                 Prefs(this).returnSeconds = value.toInt().coerceIn(10, 3600)
+                reportSettings()
+            } else if (entity === setZoom) {
+                Prefs(this).zoom = value.toInt()
+                AppState.controller?.applySettings()
                 reportSettings()
             }
         }

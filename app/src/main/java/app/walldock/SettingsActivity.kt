@@ -38,6 +38,7 @@ class SettingsActivity : Activity() {
     private lateinit var saverCheck: CheckBox
     private lateinit var saverField: EditText
     private lateinit var saverUrlField: EditText
+    private lateinit var zoomField: EditText
     private lateinit var systemBrightnessCheck: CheckBox
     private lateinit var bootCheck: CheckBox
     private lateinit var scheduleCheck: CheckBox
@@ -88,6 +89,9 @@ class SettingsActivity : Activity() {
         column.addView(label(tr(R.string.settings_screensaver_delay)))
         saverField = field(prefs.screensaverMinutes.toString(), "5", InputType.TYPE_CLASS_NUMBER)
         column.addView(saverField)
+        column.addView(label(tr(R.string.settings_zoom)))
+        zoomField = field(prefs.zoom.toString(), "100", InputType.TYPE_CLASS_NUMBER)
+        column.addView(zoomField)
         column.addView(label(tr(R.string.settings_saver_url)))
         saverUrlField = field(prefs.screensaverUrl, tr(R.string.settings_saver_url_hint), InputType.TYPE_TEXT_VARIATION_URI)
         column.addView(saverUrlField)
@@ -364,6 +368,7 @@ class SettingsActivity : Activity() {
                 prefs.screensaverEnabled = saverCheck.isChecked
                 prefs.autoUpdate = updateCheck.isChecked
                 prefs.screensaverUrl = saverUrlField.text.toString().trim()
+                zoomField.text.toString().toIntOrNull()?.let { prefs.zoom = it }
                 prefs.startOnBoot = bootCheck.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }

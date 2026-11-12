@@ -110,6 +110,11 @@ class MainActivity : Activity(), DashboardController {
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         root.addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        // Zoom : la page est mise en page sur une surface plus grande (ou plus petite), puis
+        // réduite (ou agrandie) pour remplir l'écran ; les touchers suivent automatiquement.
+        root.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+            if (r - l != or - ol || b - t != ob - ot) root.post { applyZoom() }
+        }
 
         // Écran de secours : horloge et message tant que HA est injoignable ; le dock reste utilisable
         offlineScreen = FrameLayout(this)
@@ -269,6 +274,7 @@ class MainActivity : Activity(), DashboardController {
         stopService(Intent(this, ReturnService::class.java))
         enterImmersive()
         applyScreen()
+        applyZoom()
 
         if (!prefs.isConfigured) {
             // Premier lancement : pas encore de code, on ouvre directement les réglages
@@ -468,7 +474,28 @@ class MainActivity : Activity(), DashboardController {
         hideScreensaver()
     }
 
+    private fun applyZoom() {
+        val parent = web.parent as? View ?: return
+        val w = parent.width
+        val h = parent.height
+        if (w <= 0 || h <= 0) return
+        val z = prefs.zoom.coerceIn(50, 200) / 100f
+        val params = web.layoutParams
+        val newW = if (z == 1f) MATCH_PARENT else Math.round(w / z)
+        val newH = if (z == 1f) MATCH_PARENT else Math.round(h / z)
+        web.pivotX = 0f
+        web.pivotY = 0f
+        web.scaleX = z
+        web.scaleY = z
+        if (params.width != newW || params.height != newH) {
+            params.width = newW
+            params.height = newH
+            web.layoutParams = params
+        }
+    }
+
     override fun applySettings() {
+        applyZoom()
         applyHandlePosition()
         showHome()
     }

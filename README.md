@@ -15,6 +15,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Retour automatique au tableau de bord après inactivité ; les applis « Vidéo » en sont exclues.
 - Réglages protégés par un code ; WallDock peut devenir l'écran d'accueil de la tablette (conseillé sur une tablette murale).
 - Redémarrage automatique : WallDock se relance quand la tablette redémarre (coupure de courant), même s'il n'est pas l'écran d'accueil (il faut l'autorisation « afficher par-dessus les autres applis »).
+- Zoom du tableau de bord (50 à 200 %) : plus d'informations à l'écran d'un coup, ou plus gros.
 - Écran de veille : horloge, ou une page de votre choix (une vue du tableau de bord, par exemple `/lovelace/veille`).
 - Luminosité de la fenêtre WallDock, ou du système entier en option (autorisation « Modifier les paramètres système »).
 - Planification : écran éteint chaque nuit (heures d'extinction et d'allumage réglables, aussi depuis HA).
@@ -131,7 +132,7 @@ Le serveur ESPHome (`app/src/main/java/app/walldock/esphome`) est en Java pur et
 
 - Detailed setup for wall tablets (home screen, battery optimization on Samsung, Xiaomi, Honor/Huawei…), what each permission is for, and an honest comparison with Fully Kiosk: see the French sections above.
 - Motion detection with the front camera (screen wakes up, "Motion" sensor in HA; images never leave the tablet).
-- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, start on boot (power cut), nightly screen schedule, URL whitelist, screensaver (clock or any dashboard page), optional system brightness, offline fallback screen, automatic updates from GitHub releases.
+- Full-screen dashboard kiosk, app dock, automatic return to the dashboard, PIN-protected settings, start on boot (power cut), nightly screen schedule, URL whitelist, dashboard zoom (50–200 %), screensaver (clock or any dashboard page), optional system brightness, offline fallback screen, automatic updates from GitHub releases.
 - Monitoring sensors: battery level and temperature, Wi-Fi signal, inactivity time and a screen-activity binary sensor.
 - Native ESPHome API integration (auto-discovered, **encrypted**: Home Assistant creates the Noise key on its own at the first connection): battery, screen, brightness, volume, current app, open app/page, full-screen alerts with countdown, text-to-speech, sounds.
 - **Jarvis voice assistant**: Assist satellite with on-device "Hey Jarvis" wake word (openWakeWord models) or Home Assistant wake word detection, animated full-screen face, announcements, voice timers, and "Stop" to silence it.

@@ -151,6 +151,11 @@ class Prefs(context: Context) {
         }
     }
 
+    /** Zoom du tableau de bord en % (moins de 100 = plus de choses à l'écran). */
+    var zoom: Int
+        get() = sp.getInt("dashboard_zoom", 100)
+        set(value) = sp.edit().putInt("dashboard_zoom", value.coerceIn(50, 200)).apply()
+
     var jarvisOnDevice: Boolean
         get() = sp.getBoolean(KEY_JARVIS_ON_DEVICE, true)
         set(value) = sp.edit().putBoolean(KEY_JARVIS_ON_DEVICE, value).apply()
