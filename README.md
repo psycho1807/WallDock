@@ -123,6 +123,13 @@ Une version **Pro** ajoute : mots de réveil au choix et mot personnalisé, inte
 - 🔑 **Licence** (achat unique, 4,99 €, 1 clé = 3 tablettes) : [becasseau.gumroad.com/l/walldock-pro](https://becasseau.gumroad.com/l/walldock-pro)
 - La version gratuite reste gratuite, complète et libre ; acheter la Pro est aussi une façon de soutenir le projet.
 
+## Jarvis aussi sur votre téléphone
+
+La **[carte Jarvis](https://github.com/psycho1807/jarvis-card)** reprend l'anneau animé de WallDock dans Home Assistant : vous touchez l'écran, vous parlez, Jarvis répond avec sa voix. Elle marche dans l'appli Home Assistant sur iPhone et Android et dans un navigateur, avec n'importe quel pipeline Assist.
+
+- Installation : dans HACS / Marketplace, **Ajouter depuis un lien** → `https://github.com/psycho1807/jarvis-card` (type *Dashboard*), puis une vue de type **Panel** avec `type: custom:jarvis-card`.
+- Sur iPhone, un raccourci « Jarvis » qui ouvre la page permet de la lancer avec « Dis Siri, Jarvis ».
+
 ## Soutenir le projet
 
 WallDock est gratuit et libre. Si l'appli vous rend service, un petit don aide à la faire avancer :
@@ -164,6 +171,8 @@ Install the latest APK from [Releases](https://github.com/psycho1807/WallDock/re
  The app UI is available in English and French (it follows the tablet language).
 
 **WallDock Pro** adds wake word choice and a custom wake word, intercom between tablets, the live tablet screen in Home Assistant (view and touch), locked kiosk, remote admin page + REST API, MQTT, tabs and PDF viewer. [Download](https://github.com/psycho1807/WallDock-Pro-Releases/releases/latest) (3-day free trial) · [Licence key](https://becasseau.gumroad.com/l/walldock-pro) (one-time €4.99, 3 tablets).
+
+**Jarvis on your phone:** the [Jarvis card](https://github.com/psycho1807/jarvis-card) brings WallDock's animated ring to any Home Assistant dashboard — tap, speak, and Jarvis answers out loud, in the Companion app (iPhone/Android) or a browser. Install it from HACS / Marketplace as a custom repository (type *Dashboard*).
 
 Support the project: [Ko-fi](https://ko-fi.com/psycho1807)
 
