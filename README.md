@@ -11,7 +11,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 > **Travaux en cours sur la branche `feature/smartflow-v17.3`.** Ces fonctionnalités ne sont pas encore disponibles dans la version publiée.
 
-**Morning Glass** est un futur écran matinal natif de WallDock, prévu de **06:00 à 10:00** (horaires personnalisables) :
+**Morning Glass** est un futur écran matinal natif de WallDock, prévu de **06:00 à 10:00** (horaires et jours personnalisables) :
 
 - Horloge locale, météo Home Assistant et rendez-vous du calendrier.
 - Trafic vers une destination choisie (fournisseur de données à intégrer).
@@ -27,7 +27,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 > Under development on `feature/smartflow-v17.3`; **not yet available** in the released app.
 
-Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, configurable commute traffic, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Traffic data is not yet connected. The latest changes still need a fresh build and device tests.**
+Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, configurable commute traffic, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours and weekdays, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Traffic data is not yet connected. The latest changes still need a fresh build and device tests.**
 
 ---
 
