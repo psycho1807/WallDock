@@ -69,7 +69,6 @@ class MainActivity : Activity(), DashboardController {
     }
 
     private fun refreshSmartFlowData() {
-        if (!smartFlowConfig.weatherEnabled && !smartFlowConfig.calendarEnabled && !smartFlowConfig.trafficEnabled) return
         smartFlowLastRefresh = SystemClock.elapsedRealtime()
         smartFlowData.refresh(smartFlowConfig.trafficSensor) { weather, calendar, traffic, home, security ->
             if (smartFlowScreen.view.visibility == View.VISIBLE) {
@@ -213,6 +212,7 @@ class MainActivity : Activity(), DashboardController {
         root.addView(offlineScreen, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         smartFlowScreen = SmartFlowMorningScreen(this, root)
         smartFlowScreen.onDismiss = {
+            smartFlowCurrentProfile = null
             smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
             smartFlowScreen.view.visibility = View.GONE
         }
