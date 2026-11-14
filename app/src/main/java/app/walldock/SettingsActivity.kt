@@ -331,6 +331,15 @@ class SettingsActivity : Activity() {
         // Version Google Play : les mises à jour passent par le Play Store
         if (!BuildConfig.PLAY_STORE) {
             column.addView(updateCheck)
+            if (Build.VERSION.SDK_INT >= 33) {
+                column.addView(button("Autoriser les notifications de mise à jour") {
+                    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 173)
+                    } else {
+                        toast("Notifications déjà autorisées")
+                    }
+                })
+            }
             column.addView(button(tr(R.string.settings_allow_install)) {
                 open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
             })
@@ -470,6 +479,21 @@ class SettingsActivity : Activity() {
         updateText.text = updateLine(Updater.status)
         updateJarvisStatus()
         Updater.addListener(updateListener)
+        if (!BuildConfig.PLAY_STORE && intent.getBooleanExtra(Updater.EXTRA_INSTALL_UPDATE, false)) {
+            intent.removeExtra(Updater.EXTRA_INSTALL_UPDATE)
+            if (packageManager.canRequestPackageInstalls()) {
+                Updater.check(this, install = true)
+            } else {
+                AlertDialog.Builder(this)
+                    .setTitle("Autorisation nécessaire")
+                    .setMessage("Autorise WallDock à installer des applications, puis relance la mise à jour.")
+                    .setPositiveButton("Ouvrir les autorisations") { _, _ ->
+                        open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                    }
+                    .setNegativeButton("Plus tard", null)
+                    .show()
+            }
+        }
     }
 
     override fun onPause() {
