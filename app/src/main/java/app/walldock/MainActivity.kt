@@ -336,6 +336,7 @@ class MainActivity : Activity(), DashboardController {
         AppState.controller = this
         AppState.currentApp = tr(R.string.dashboard)
         ApiService.instance?.reportCurrentApp()
+        Updater.checkPeriodically(this)
         stopService(Intent(this, ReturnService::class.java))
         enterImmersive()
         applyScreen()
