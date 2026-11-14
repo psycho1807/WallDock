@@ -64,7 +64,10 @@ object Updater {
             .setContentIntent(pending)
             .setAutoCancel(true)
             .build()
+        val store = context.getSharedPreferences("walldock_update_checks", Context.MODE_PRIVATE)
+        if (store.getString("notified_version", "") == version) return
         manager.notify(NOTIFICATION_ID, notification)
+        store.edit().putString("notified_version", version).apply()
     }
 
     private const val LATEST_RELEASE = "https://api.github.com/repos/psycho1807/WallDock/releases/latest"
