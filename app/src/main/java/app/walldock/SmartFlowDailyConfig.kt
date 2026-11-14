@@ -60,16 +60,62 @@ class SmartFlowDailyConfig(context: Context) {
         }
 
     fun currentProfile(now: LocalTime = LocalTime.now(), today: LocalDate = LocalDate.now()): Profile? {
+        // En cas de chevauchement, priorité au matin, puis jour, soir et nuit.
         if (isMorningActive(now, today)) return Profile.MORNING
-        val start = parseTime(dayStartTime)
-        val end = parseTime(dayEndTime)
-        if (dayEnabled && start != null && end != null && start != end) {
-            val day = if (start > end && now.isBefore(end)) today.minusDays(1) else today
-            if (day.dayOfWeek.value in activeDays &&
-                (if (start < end) !now.isBefore(start) && now.isBefore(end)
-                 else !now.isBefore(start) || now.isBefore(end))) return Profile.DAY
-        }
+        if (isWithinPeriod(dayEnabled, dayStartTime, dayEndTime, now, today)) return Profile.DAY
+        if (isWithinPeriod(eveningEnabled, eveningStartTime, eveningEndTime, now, today)) return Profile.EVENING
+        if (isWithinPeriod(nightEnabled, nightStartTime, nightEndTime, now, today)) return Profile.NIGHT
         return null
+    }
+
+    var eveningEnabled: Boolean
+        get() = store.getBoolean("smartflow_evening_enabled", false)
+        set(value) = store.edit().putBoolean("smartflow_evening_enabled", value).apply()
+
+    var eveningStartTime: String
+        get() = store.getString("smartflow_evening_start", "18:00") ?: "18:00"
+        set(value) {
+            require(parseTime(value) != null)
+            store.edit().putString("smartflow_evening_start", value).apply()
+        }
+
+    var eveningEndTime: String
+        get() = store.getString("smartflow_evening_end", "22:00") ?: "22:00"
+        set(value) {
+            require(parseTime(value) != null)
+            store.edit().putString("smartflow_evening_end", value).apply()
+        }
+
+    var nightEnabled: Boolean
+        get() = store.getBoolean("smartflow_night_enabled", false)
+        set(value) = store.edit().putBoolean("smartflow_night_enabled", value).apply()
+
+    var nightStartTime: String
+        get() = store.getString("smartflow_night_start", "22:00") ?: "22:00"
+        set(value) {
+            require(parseTime(value) != null)
+            store.edit().putString("smartflow_night_start", value).apply()
+        }
+
+    var nightEndTime: String
+        get() = store.getString("smartflow_night_end", "06:00") ?: "06:00"
+        set(value) {
+            require(parseTime(value) != null)
+            store.edit().putString("smartflow_night_end", value).apply()
+        }
+
+    private fun isWithinPeriod(
+        enabled: Boolean, startText: String, endText: String,
+        now: LocalTime, today: LocalDate
+    ): Boolean {
+        if (!enabled) return false
+        val start = parseTime(startText) ?: return false
+        val end = parseTime(endText) ?: return false
+        if (start == end) return false
+        val referenceDay = if (start > end && now.isBefore(end)) today.minusDays(1) else today
+        if (referenceDay.dayOfWeek.value !in activeDays) return false
+        return if (start < end) !now.isBefore(start) && now.isBefore(end)
+        else !now.isBefore(start) || now.isBefore(end)
     }
 
     var weatherEnabled: Boolean
