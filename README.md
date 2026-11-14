@@ -19,7 +19,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Retour au dashboard Home Assistant en conservant sa WebView.
 - Paramètres locaux, désactivés par défaut pendant le développement.
 
-**État actuel :** aperçu natif Morning Glass, horaires personnalisables, choix des widgets et retour temporaire au dashboard implémentés sur la branche de développement. L'activation est désactivée par défaut. **Les données météo, calendrier et trafic ne sont pas encore connectées ; la compilation et les tests sur tablette restent à valider.**
+**État actuel :** aperçu natif Morning Glass, horaires personnalisables, choix des widgets et retour temporaire au dashboard implémentés sur la branche de développement. L'activation est désactivée par défaut. **La météo et les événements du jour sont maintenant lus via la session Home Assistant de la WebView. Le trafic n'est pas encore connecté. Les nouvelles modifications doivent être recompilées et testées sur tablette.**
 
 **Captures :** des visuels de concept et de véritables captures seront ajoutés ici après intégration et vérification. Aucun visuel de démonstration n'est présenté comme une capture fonctionnelle.
 
@@ -27,7 +27,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 > Under development on `feature/smartflow-v17.3`; **not yet available** in the released app.
 
-Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, configurable commute traffic, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Live weather, calendar and traffic data are not connected yet; build and device validation are pending.**
+Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, configurable commute traffic, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Traffic data is not yet connected. The latest changes still need a fresh build and device tests.**
 
 ---
 
