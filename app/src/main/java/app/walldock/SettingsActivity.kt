@@ -59,6 +59,7 @@ class SettingsActivity : Activity() {
     private lateinit var smartFlowClock: CheckBox
     private lateinit var smartFlowTraffic: CheckBox
     private lateinit var smartFlowDestination: EditText
+    private val smartFlowDays = mutableListOf<CheckBox>()
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
     private lateinit var wakeField: EditText
@@ -348,6 +349,19 @@ class SettingsActivity : Activity() {
         column.addView(label("Fin (HH:mm)"))
         smartFlowEnd = field(smartFlowConfig.endTime, "10:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
         column.addView(smartFlowEnd)
+        column.addView(label("Jours d'activation"))
+        val dayLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
+        val daysRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        dayLabels.forEachIndexed { index, name ->
+            val day = CheckBox(this).apply {
+                text = name
+                setTextColor(Color.WHITE)
+                isChecked = index + 1 in smartFlowConfig.activeDays
+            }
+            smartFlowDays.add(day)
+            daysRow.addView(day)
+        }
+        column.addView(daysRow)
         fun smartFlowCheck(label: String, checked: Boolean): CheckBox =
             CheckBox(this).apply {
                 text = label
@@ -500,6 +514,8 @@ class SettingsActivity : Activity() {
         val smartFlowEndValue = smartFlowEnd.text.toString().trim()
         val validTime = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         when {
+            smartFlowEnabled.isChecked && smartFlowDays.none { it.isChecked } ->
+                toast("SmartFlow : sélectionne au moins un jour")
             !validTime.matches(smartFlowStartValue) || !validTime.matches(smartFlowEndValue) || smartFlowStartValue == smartFlowEndValue ->
                 toast("SmartFlow : horaires invalides (HH:mm, début différent de fin)")
             saverCheck.isChecked && saverMinutes < 1 -> toast(tr(R.string.error_saver_delay))
@@ -524,6 +540,7 @@ class SettingsActivity : Activity() {
                 prefs.sendspinEnabled = sendspinCheck.isChecked
                 ApiService.instance?.applySendspin()
                 prefs.calendarInDock = calendarCheck.isChecked
+                smartFlowConfig.activeDays = smartFlowDays.mapIndexedNotNull { index, check -> if (check.isChecked) index + 1 else null }.toSet()
                 smartFlowConfig.startTime = smartFlowStartValue
                 smartFlowConfig.endTime = smartFlowEndValue
                 smartFlowConfig.weatherEnabled = smartFlowWeather.isChecked
