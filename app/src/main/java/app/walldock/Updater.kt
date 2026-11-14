@@ -172,6 +172,7 @@ object Updater {
             params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }
         val sessionId = installer.createSession(params)
+        try {
         installer.openSession(sessionId).use { session ->
             session.openWrite("walldock.apk", 0, file.length()).use { out ->
                 file.inputStream().use { it.copyTo(out) }
@@ -181,6 +182,10 @@ object Updater {
             var flags = PendingIntent.FLAG_UPDATE_CURRENT
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags = flags or PendingIntent.FLAG_MUTABLE
             session.commit(PendingIntent.getBroadcast(context, 0, intent, flags).intentSender)
+        }
+        } catch (e: Exception) {
+            installer.abandonSession(sessionId)
+            throw e
         }
     }
 
