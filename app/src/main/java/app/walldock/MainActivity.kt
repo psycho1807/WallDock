@@ -57,11 +57,24 @@ class MainActivity : Activity(), DashboardController {
     private lateinit var calendarScreen: CalendarScreen
     private lateinit var smartFlowConfig: SmartFlowDailyConfig
     private lateinit var smartFlowScreen: SmartFlowMorningScreen
+    private lateinit var smartFlowData: SmartFlowHomeAssistantData
+    private var smartFlowLastRefresh = 0L
     private var smartFlowPausedUntil = 0L
     private val smartFlowCheck = object : Runnable {
         override fun run() {
             updateSmartFlow()
             handler.postDelayed(this, 15_000)
+        }
+    }
+
+    private fun refreshSmartFlowData() {
+        if (!smartFlowConfig.weatherEnabled && !smartFlowConfig.calendarEnabled) return
+        smartFlowLastRefresh = SystemClock.elapsedRealtime()
+        smartFlowData.refresh { weather, calendar ->
+            if (smartFlowScreen.view.visibility == View.VISIBLE) {
+                smartFlowScreen.updateWeather(weather)
+                smartFlowScreen.updateCalendar(calendar)
+            }
         }
     }
 
@@ -75,6 +88,9 @@ class MainActivity : Activity(), DashboardController {
             smartFlowScreen.applyConfig(smartFlowConfig)
             smartFlowScreen.view.visibility = View.VISIBLE
             setDockVisible(false)
+            refreshSmartFlowData()
+        } else if (shouldShow && SystemClock.elapsedRealtime() - smartFlowLastRefresh > 5 * 60_000L) {
+            refreshSmartFlowData()
         } else if (!shouldShow) {
             smartFlowScreen.view.visibility = View.GONE
         }
@@ -139,6 +155,7 @@ class MainActivity : Activity(), DashboardController {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         root.addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         calendarScreen = CalendarScreen(this, root, web)
+        smartFlowData = SmartFlowHomeAssistantData(web)
         // Zoom : la page est mise en page sur une surface plus grande (ou plus petite), puis
         // réduite (ou agrandie) pour remplir l'écran ; les touchers suivent automatiquement.
         root.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
