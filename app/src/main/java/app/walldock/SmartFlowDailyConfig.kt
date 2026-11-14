@@ -55,6 +55,11 @@ class SmartFlowDailyConfig(context: Context) {
         get() = store.getBoolean("smartflow_widget_traffic", true)
         set(value) = store.edit().putBoolean("smartflow_widget_traffic", value).apply()
 
+    /** Capteur Home Assistant de durée du trajet, par ex. sensor.commute_time. */
+    var trafficSensor: String
+        get() = store.getString("smartflow_traffic_sensor", "") ?: ""
+        set(value) = store.edit().putString("smartflow_traffic_sensor", value.trim()).apply()
+
     var trafficDestination: String
         get() = store.getString("smartflow_traffic_destination", "") ?: ""
         set(value) = store.edit().putString("smartflow_traffic_destination", value.trim()).apply()
