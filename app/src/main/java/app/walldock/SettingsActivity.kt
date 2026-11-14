@@ -52,6 +52,9 @@ class SettingsActivity : Activity() {
     private lateinit var calendarCheck: CheckBox
     private lateinit var smartFlowConfig: SmartFlowDailyConfig
     private lateinit var smartFlowEnabled: CheckBox
+    private lateinit var smartFlowDayEnabled: CheckBox
+    private lateinit var smartFlowDayStart: EditText
+    private lateinit var smartFlowDayEnd: EditText
     private lateinit var smartFlowStart: EditText
     private lateinit var smartFlowEnd: EditText
     private lateinit var smartFlowWeather: CheckBox
@@ -350,6 +353,19 @@ class SettingsActivity : Activity() {
         column.addView(label("Fin (HH:mm)"))
         smartFlowEnd = field(smartFlowConfig.endTime, "10:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
         column.addView(smartFlowEnd)
+        column.addView(heading("Day Flow · Journée (aperçu)", 17f))
+        smartFlowDayEnabled = CheckBox(this).apply {
+            text = "Activer Day Flow automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.dayEnabled
+        }
+        column.addView(smartFlowDayEnabled)
+        column.addView(label("Début journée (HH:mm)"))
+        smartFlowDayStart = field(smartFlowConfig.dayStartTime, "10:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowDayStart)
+        column.addView(label("Fin journée (HH:mm)"))
+        smartFlowDayEnd = field(smartFlowConfig.dayEndTime, "18:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowDayEnd)
         column.addView(label("Jours d'activation"))
         val dayLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
         val daysRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -516,10 +532,14 @@ class SettingsActivity : Activity() {
         val saverMinutes = saverField.text.toString().trim().toIntOrNull() ?: 0
         val smartFlowStartValue = smartFlowStart.text.toString().trim()
         val smartFlowEndValue = smartFlowEnd.text.toString().trim()
+        val smartFlowDayStartValue = smartFlowDayStart.text.toString().trim()
+        val smartFlowDayEndValue = smartFlowDayEnd.text.toString().trim()
         val validTime = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         when {
             smartFlowTrafficSensor.text.toString().trim().let { it.isNotEmpty() && !Regex("^sensor\\.[a-z0-9_]+$").matches(it) } ->
                 toast("SmartFlow : entité de trajet invalide (sensor.nom)")
+            !validTime.matches(smartFlowDayStartValue) || !validTime.matches(smartFlowDayEndValue) || smartFlowDayStartValue == smartFlowDayEndValue ->
+                toast("Day Flow : horaires invalides")
             smartFlowEnabled.isChecked && smartFlowDays.none { it.isChecked } ->
                 toast("SmartFlow : sélectionne au moins un jour")
             !validTime.matches(smartFlowStartValue) || !validTime.matches(smartFlowEndValue) || smartFlowStartValue == smartFlowEndValue ->
@@ -547,6 +567,9 @@ class SettingsActivity : Activity() {
                 ApiService.instance?.applySendspin()
                 prefs.calendarInDock = calendarCheck.isChecked
                 smartFlowConfig.activeDays = smartFlowDays.mapIndexedNotNull { index, check -> if (check.isChecked) index + 1 else null }.toSet()
+                smartFlowConfig.dayStartTime = smartFlowDayStartValue
+                smartFlowConfig.dayEndTime = smartFlowDayEndValue
+                smartFlowConfig.dayEnabled = smartFlowDayEnabled.isChecked
                 smartFlowConfig.startTime = smartFlowStartValue
                 smartFlowConfig.endTime = smartFlowEndValue
                 smartFlowConfig.weatherEnabled = smartFlowWeather.isChecked
