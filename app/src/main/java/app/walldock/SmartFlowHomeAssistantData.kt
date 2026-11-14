@@ -36,7 +36,7 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
 
     fun refresh(trafficEntityId: String, onResult: (weather: String, calendar: String, traffic: String) -> Unit) {
         callback = onResult
-        val sensorId = if (Regex("^sensor\\\\.[a-z0-9_]+$").matches(trafficEntityId)) trafficEntityId else ""
+        val sensorId = if (Regex("^sensor\\.[a-z0-9_]+$").matches(trafficEntityId)) trafficEntityId else ""
         val script = """
             (async function () {
               try {
