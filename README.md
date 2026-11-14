@@ -19,7 +19,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 - Retour au dashboard Home Assistant en conservant sa WebView.
 - Paramètres locaux, désactivés par défaut pendant le développement.
 
-**Day Flow, Evening Flow et Night Flow** réutilisent provisoirement la structure Morning Glass avec des titres adaptés. Des cartes d'état maison (lumières/interrupteurs) et sécurité (alarme) sont ajoutées pour les périodes concernées. Les interfaces graphiques spécifiques, les contrôles domotiques et les tests sur tablette restent à faire.
+**Day Flow, Evening Flow et Night Flow** réutilisent provisoirement la structure Morning Glass avec des titres adaptés. Des cartes d'état maison (lumières/interrupteurs) et sécurité (alarme) sont ajoutées pour les périodes concernées. Une première différenciation visuelle (dégradés par période, date et sélection des cartes) est intégrée. Les contrôles domotiques, les captures réelles et les tests sur tablette restent à faire.
 
 **État actuel :** aperçu natif Morning Glass, horaires personnalisables, choix des widgets et retour temporaire au dashboard implémentés sur la branche de développement. L'activation est désactivée par défaut. **La météo et les événements du jour sont maintenant lus via la session Home Assistant de la WebView. Le trajet peut désormais lire un capteur `sensor.*` de Home Assistant ; aucune API cartographique directe n'est intégrée. Les nouvelles modifications doivent être recompilées et testées sur tablette.**
 
@@ -29,7 +29,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 > Under development on `feature/smartflow-v17.3`; **not yet available** in the released app.
 
-The development branch now includes four disabled-by-default profile previews: **Morning (06:00–10:00), Day (10:00–18:00), Evening (18:00–22:00), and Night (22:00–06:00)**. Day, Evening and Night reuse the native preview layout for now. Home Assistant lights/switches and alarm status are shown where relevant; polished per-profile layouts and on-device tests are still pending.
+The development branch now includes four disabled-by-default profile previews: **Morning (06:00–10:00), Day (10:00–18:00), Evening (18:00–22:00), and Night (22:00–06:00)**. Day, Evening and Night reuse the native preview layout for now. Home Assistant lights/switches and alarm status are shown where relevant; initial per-profile gradients, date and focused cards are in place; device tests and final visual polish are still pending.
 
 Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, commute time from a configured Home Assistant sensor, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours and weekdays, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Commute duration can now be read from a user-selected Home Assistant `sensor.*` entity; there is no built-in maps provider. The latest changes still need a fresh build and device tests.**
 
