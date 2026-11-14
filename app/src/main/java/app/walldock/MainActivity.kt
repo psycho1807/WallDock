@@ -215,6 +215,7 @@ class MainActivity : Activity(), DashboardController {
             smartFlowCurrentProfile = null
             smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
             smartFlowScreen.view.visibility = View.GONE
+            smartFlowLastRefresh = 0L
         }
 
         // Dock
@@ -595,6 +596,8 @@ class MainActivity : Activity(), DashboardController {
         handler.removeCallbacks(healthCheck)
         handler.removeCallbacks(smartFlowCheck)
         smartFlowScreen.view.visibility = View.GONE
+        smartFlowCurrentProfile = null
+        smartFlowLastRefresh = 0L
         hideScreensaver()
         AppState.dashboardVisible = false
         setDockVisible(false)
