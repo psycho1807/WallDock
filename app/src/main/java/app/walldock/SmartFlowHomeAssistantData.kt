@@ -13,6 +13,7 @@ import org.json.JSONObject
 class SmartFlowHomeAssistantData(private val web: WebView) {
     private val handler = Handler(Looper.getMainLooper())
     private var callback: ((String, String, String, String, String) -> Unit)? = null
+    private var requestId = 0L
 
     init {
         web.addJavascriptInterface(Bridge(), "WallDockSmartFlow")
@@ -23,6 +24,7 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
         fun onData(json: String) {
             handler.post {
                 val result = try { JSONObject(json) } catch (_: Exception) { JSONObject() }
+                if (result.optLong("requestId", -1L) != requestId) return@post
                 val error = result.optString("error")
                 callback?.invoke(
                     if (error.isNotBlank()) error else result.optString("weather", "Météo indisponible"),
@@ -38,13 +40,15 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
 
     fun refresh(trafficEntityId: String, onResult: (weather: String, calendar: String, traffic: String, home: String, security: String) -> Unit) {
         callback = onResult
+        requestId += 1
+        val currentRequestId = requestId
         val sensorId = if (Regex("^sensor\\.[a-z0-9_]+$").matches(trafficEntityId)) trafficEntityId else ""
         val script = """
             (async function () {
               try {
                 const element = document.querySelector('home-assistant');
                 const hass = element && element.hass;
-                if (!hass || !hass.states) { WallDockSmartFlow.onData(JSON.stringify({error: 'Home Assistant non connecté'})); return; }
+                if (!hass || !hass.states) { WallDockSmartFlow.onData(JSON.stringify({requestId: __REQUEST_ID__, error: 'Home Assistant non connecté'})); return; }
                 const states = hass.states;
                 const weatherId = Object.keys(states).find(id => id.startsWith('weather.'));
                 let weather = 'Aucune entité weather.* configurée';
@@ -93,12 +97,12 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
                 const security = alarms.length
                   ? alarms.slice(0, 2).map(id => (states[id].attributes.friendly_name || id) + ' : ' + states[id].state).join(' · ')
                   : 'Aucune alarme Home Assistant configurée';
-                WallDockSmartFlow.onData(JSON.stringify({weather, calendar, traffic, home, security}));
+                WallDockSmartFlow.onData(JSON.stringify({requestId: __REQUEST_ID__, weather, calendar, traffic, home, security}));
               } catch (e) {
-                WallDockSmartFlow.onData(JSON.stringify({error: 'Données Home Assistant indisponibles'}));
+                WallDockSmartFlow.onData(JSON.stringify({requestId: __REQUEST_ID__, error: 'Données Home Assistant indisponibles'}));
               }
             })();
         """.trimIndent()
-        web.evaluateJavascript(script.replace("__TRAFFIC_SENSOR__", sensorId), null)
+        web.evaluateJavascript(script.replace("__TRAFFIC_SENSOR__", sensorId).replace("__REQUEST_ID__", currentRequestId.toString()), null)
     }
 }
