@@ -62,7 +62,7 @@ object Updater {
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle("WallDock $version disponible")
-.setContentText("Appuyer pour télécharger et installer la mise à jour.")
+            .setContentText("Appuyer pour télécharger et installer la mise à jour.")
             .setContentIntent(pending)
             .setAutoCancel(true)
             .build()
@@ -123,15 +123,20 @@ object Updater {
         val latest = release.optString("tag_name").removePrefix("v")
         val assets = release.optJSONArray("assets")
         var apkUrl: String? = null
+        val expectedApkName = "WallDock-$latest.apk"
         if (assets != null) {
             for (i in 0 until assets.length()) {
                 val asset = assets.getJSONObject(i)
-                if (asset.optString("name").endsWith(".apk")) apkUrl = asset.optString("browser_download_url")
+                if (asset.optString("name") == expectedApkName) apkUrl = asset.optString("browser_download_url")
             }
         }
         val current = BuildConfig.VERSION_NAME
-        if (latest.isBlank() || apkUrl == null || compareVersions(latest, current) <= 0) {
+        if (latest.isBlank() || compareVersions(latest, current) <= 0) {
             setStatus(tr(R.string.upd_up_to_date, current))
+            return
+        }
+        if (apkUrl == null) {
+            setStatus("Version $latest détectée, mais APK officiel introuvable sur GitHub.")
             return
         }
         if (!install) {
