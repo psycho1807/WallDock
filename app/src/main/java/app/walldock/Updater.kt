@@ -150,7 +150,12 @@ object Updater {
         }
         setStatus(tr(R.string.upd_downloading, latest))
         val file = File(context.cacheDir, "walldock-update.apk")
-        download(apkUrl, file)
+        try {
+            download(apkUrl, file)
+        } catch (e: Exception) {
+            file.delete()
+            throw e
+        }
         val installing = tr(R.string.upd_installing, latest)
         setStatus(installing)
         installApk(context, file)
@@ -192,11 +197,35 @@ object Updater {
     }
 
     private fun download(address: String, target: File) {
+        require(address.startsWith("https://github.com/psycho1807/WallDock/releases/download/")) {
+            "Source APK non autorisée"
+        }
         val connection = open(address)
+        val partial = File(target.parentFile, target.name + ".part")
+        partial.delete()
         try {
             if (connection.responseCode != 200) throw IllegalStateException(tr(R.string.upd_download_refused, connection.responseCode))
-            connection.inputStream.use { input -> target.outputStream().use { input.copyTo(it) } }
+            val expectedLength = connection.contentLengthLong
+            var bytes = 0L
+            connection.inputStream.use { input ->
+                partial.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                        bytes += count
+                        if (bytes > 250L * 1024 * 1024) throw IllegalStateException("APK trop volumineux")
+                    }
+                    output.flush()
+                }
+            }
+            if (bytes == 0L || (expectedLength > 0L && bytes != expectedLength)) {
+                throw IllegalStateException("Téléchargement APK incomplet")
+            }
+            if (!partial.renameTo(target)) throw IllegalStateException("Impossible de préparer l'APK")
         } finally {
+            partial.delete()
             connection.disconnect()
         }
     }
