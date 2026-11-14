@@ -1,21 +1,46 @@
 package app.walldock
 
 import android.webkit.WebView
+import android.webkit.JavascriptInterface
+import android.os.Handler
+import android.os.Looper
 import org.json.JSONObject
-import org.json.JSONTokener
 
 /**
  * Lit les données via la session Home Assistant déjà ouverte dans la WebView.
  * Pas de token stocké, pas de requête réseau supplémentaire depuis Android.
  */
 class SmartFlowHomeAssistantData(private val web: WebView) {
+    private val handler = Handler(Looper.getMainLooper())
+    private var callback: ((String, String) -> Unit)? = null
+
+    init {
+        web.addJavascriptInterface(Bridge(), "WallDockSmartFlow")
+    }
+
+    private inner class Bridge {
+        @JavascriptInterface
+        fun onData(json: String) {
+            handler.post {
+                val result = try { JSONObject(json) } catch (_: Exception) { JSONObject() }
+                val error = result.optString("error")
+                callback?.invoke(
+                    if (error.isNotBlank()) error else result.optString("weather", "Météo indisponible"),
+                    if (error.isNotBlank()) error else result.optString("calendar", "Calendrier indisponible")
+                )
+                callback = null
+            }
+        }
+    }
+
     fun refresh(onResult: (weather: String, calendar: String) -> Unit) {
+        callback = onResult
         val script = """
             (async function () {
               try {
                 const element = document.querySelector('home-assistant');
                 const hass = element && element.hass;
-                if (!hass || !hass.states) return JSON.stringify({error: 'Home Assistant non connecté'});
+                if (!hass || !hass.states) { WallDockSmartFlow.onData(JSON.stringify({error: 'Home Assistant non connecté'})); return; }
                 const states = hass.states;
                 const weatherId = Object.keys(states).find(id => id.startsWith('weather.'));
                 let weather = 'Aucune entité weather.* configurée';
@@ -46,25 +71,12 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
                   events.sort((a,b) => a.at - b.at);
                   if (events.length) calendar = events.slice(0, 3).map(e => e.title).join(' · ');
                 }
-                return JSON.stringify({weather, calendar});
+                WallDockSmartFlow.onData(JSON.stringify({weather, calendar}));
               } catch (e) {
-                return JSON.stringify({error: 'Données Home Assistant indisponibles'});
+                WallDockSmartFlow.onData(JSON.stringify({error: 'Données Home Assistant indisponibles'}));
               }
             })();
         """.trimIndent()
-        web.evaluateJavascript(script) { raw ->
-            val result = try {
-                val unwrapped = JSONTokener(raw).nextValue()
-                JSONObject(unwrapped as? String ?: "{}")
-            } catch (_: Exception) {
-                JSONObject()
-            }
-            val error = result.optString("error")
-            if (error.isNotBlank()) onResult(error, error)
-            else onResult(
-                result.optString("weather", "Météo indisponible"),
-                result.optString("calendar", "Calendrier indisponible")
-            )
-        }
+        web.evaluateJavascript(script, null)
     }
 }
