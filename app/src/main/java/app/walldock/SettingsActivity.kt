@@ -52,6 +52,12 @@ class SettingsActivity : Activity() {
     private lateinit var calendarCheck: CheckBox
     private lateinit var smartFlowConfig: SmartFlowDailyConfig
     private lateinit var smartFlowEnabled: CheckBox
+    private lateinit var smartFlowEveningEnabled: CheckBox
+    private lateinit var smartFlowEveningStart: EditText
+    private lateinit var smartFlowEveningEnd: EditText
+    private lateinit var smartFlowNightEnabled: CheckBox
+    private lateinit var smartFlowNightStart: EditText
+    private lateinit var smartFlowNightEnd: EditText
     private lateinit var smartFlowDayEnabled: CheckBox
     private lateinit var smartFlowDayStart: EditText
     private lateinit var smartFlowDayEnd: EditText
@@ -366,6 +372,32 @@ class SettingsActivity : Activity() {
         column.addView(label("Fin journée (HH:mm)"))
         smartFlowDayEnd = field(smartFlowConfig.dayEndTime, "18:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
         column.addView(smartFlowDayEnd)
+        column.addView(heading("Evening Flow · Soir (aperçu)", 17f))
+        smartFlowEveningEnabled = CheckBox(this).apply {
+            text = "Activer Evening Flow automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.eveningEnabled
+        }
+        column.addView(smartFlowEveningEnabled)
+        column.addView(label("Début soir (HH:mm)"))
+        smartFlowEveningStart = field(smartFlowConfig.eveningStartTime, "18:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowEveningStart)
+        column.addView(label("Fin soir (HH:mm)"))
+        smartFlowEveningEnd = field(smartFlowConfig.eveningEndTime, "22:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowEveningEnd)
+        column.addView(heading("Night Flow · Nuit (aperçu)", 17f))
+        smartFlowNightEnabled = CheckBox(this).apply {
+            text = "Activer Night Flow automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.nightEnabled
+        }
+        column.addView(smartFlowNightEnabled)
+        column.addView(label("Début nuit (HH:mm)"))
+        smartFlowNightStart = field(smartFlowConfig.nightStartTime, "22:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowNightStart)
+        column.addView(label("Fin nuit (HH:mm)"))
+        smartFlowNightEnd = field(smartFlowConfig.nightEndTime, "06:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowNightEnd)
         column.addView(label("Jours d'activation"))
         val dayLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
         val daysRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -534,10 +566,18 @@ class SettingsActivity : Activity() {
         val smartFlowEndValue = smartFlowEnd.text.toString().trim()
         val smartFlowDayStartValue = smartFlowDayStart.text.toString().trim()
         val smartFlowDayEndValue = smartFlowDayEnd.text.toString().trim()
+        val smartFlowEveningStartValue = smartFlowEveningStart.text.toString().trim()
+        val smartFlowEveningEndValue = smartFlowEveningEnd.text.toString().trim()
+        val smartFlowNightStartValue = smartFlowNightStart.text.toString().trim()
+        val smartFlowNightEndValue = smartFlowNightEnd.text.toString().trim()
         val validTime = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         when {
             smartFlowTrafficSensor.text.toString().trim().let { it.isNotEmpty() && !Regex("^sensor\\.[a-z0-9_]+$").matches(it) } ->
                 toast("SmartFlow : entité de trajet invalide (sensor.nom)")
+            !validTime.matches(smartFlowEveningStartValue) || !validTime.matches(smartFlowEveningEndValue) || smartFlowEveningStartValue == smartFlowEveningEndValue ->
+                toast("Evening Flow : horaires invalides")
+            !validTime.matches(smartFlowNightStartValue) || !validTime.matches(smartFlowNightEndValue) || smartFlowNightStartValue == smartFlowNightEndValue ->
+                toast("Night Flow : horaires invalides")
             !validTime.matches(smartFlowDayStartValue) || !validTime.matches(smartFlowDayEndValue) || smartFlowDayStartValue == smartFlowDayEndValue ->
                 toast("Day Flow : horaires invalides")
             smartFlowEnabled.isChecked && smartFlowDays.none { it.isChecked } ->
@@ -567,6 +607,12 @@ class SettingsActivity : Activity() {
                 ApiService.instance?.applySendspin()
                 prefs.calendarInDock = calendarCheck.isChecked
                 smartFlowConfig.activeDays = smartFlowDays.mapIndexedNotNull { index, check -> if (check.isChecked) index + 1 else null }.toSet()
+                smartFlowConfig.eveningStartTime = smartFlowEveningStartValue
+                smartFlowConfig.eveningEndTime = smartFlowEveningEndValue
+                smartFlowConfig.eveningEnabled = smartFlowEveningEnabled.isChecked
+                smartFlowConfig.nightStartTime = smartFlowNightStartValue
+                smartFlowConfig.nightEndTime = smartFlowNightEndValue
+                smartFlowConfig.nightEnabled = smartFlowNightEnabled.isChecked
                 smartFlowConfig.dayStartTime = smartFlowDayStartValue
                 smartFlowConfig.dayEndTime = smartFlowDayEndValue
                 smartFlowConfig.dayEnabled = smartFlowDayEnabled.isChecked
