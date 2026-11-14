@@ -67,6 +67,11 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
             else "Vers $destination · données de trafic non connectées"
     }
 
+    fun updateTraffic(value: String, destination: String) {
+        val prefix = if (destination.isBlank()) "" else "Vers $destination · "
+        (traffic.getChildAt(1) as? TextView)?.text = prefix + value
+    }
+
     fun updateWeather(value: String) {
         (weather.getChildAt(1) as? TextView)?.text = value
     }
