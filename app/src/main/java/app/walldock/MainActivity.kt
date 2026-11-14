@@ -68,12 +68,13 @@ class MainActivity : Activity(), DashboardController {
     }
 
     private fun refreshSmartFlowData() {
-        if (!smartFlowConfig.weatherEnabled && !smartFlowConfig.calendarEnabled) return
+        if (!smartFlowConfig.weatherEnabled && !smartFlowConfig.calendarEnabled && !smartFlowConfig.trafficEnabled) return
         smartFlowLastRefresh = SystemClock.elapsedRealtime()
-        smartFlowData.refresh { weather, calendar ->
+        smartFlowData.refresh(smartFlowConfig.trafficSensor) { weather, calendar, traffic ->
             if (smartFlowScreen.view.visibility == View.VISIBLE) {
                 smartFlowScreen.updateWeather(weather)
                 smartFlowScreen.updateCalendar(calendar)
+                smartFlowScreen.updateTraffic(traffic, smartFlowConfig.trafficDestination)
             }
         }
     }
