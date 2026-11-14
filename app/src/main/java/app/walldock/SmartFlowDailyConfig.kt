@@ -39,6 +39,39 @@ class SmartFlowDailyConfig(context: Context) {
             store.edit().putString("smartflow_active_days", value.sorted().joinToString(",")).apply()
         }
 
+    enum class Profile { MORNING, DAY, EVENING, NIGHT }
+
+    var dayEnabled: Boolean
+        get() = store.getBoolean("smartflow_day_enabled", false)
+        set(value) = store.edit().putBoolean("smartflow_day_enabled", value).apply()
+
+    var dayStartTime: String
+        get() = store.getString("smartflow_day_start", "10:00") ?: "10:00"
+        set(value) {
+            require(parseTime(value) != null)
+            store.edit().putString("smartflow_day_start", value).apply()
+        }
+
+    var dayEndTime: String
+        get() = store.getString("smartflow_day_end", "18:00") ?: "18:00"
+        set(value) {
+            require(parseTime(value) != null)
+            store.edit().putString("smartflow_day_end", value).apply()
+        }
+
+    fun currentProfile(now: LocalTime = LocalTime.now(), today: LocalDate = LocalDate.now()): Profile? {
+        if (isMorningActive(now, today)) return Profile.MORNING
+        val start = parseTime(dayStartTime)
+        val end = parseTime(dayEndTime)
+        if (dayEnabled && start != null && end != null && start != end) {
+            val day = if (start > end && now.isBefore(end)) today.minusDays(1) else today
+            if (day.dayOfWeek.value in activeDays &&
+                (if (start < end) !now.isBefore(start) && now.isBefore(end)
+                 else !now.isBefore(start) || now.isBefore(end))) return Profile.DAY
+        }
+        return null
+    }
+
     var weatherEnabled: Boolean
         get() = store.getBoolean("smartflow_widget_weather", true)
         set(value) = store.edit().putBoolean("smartflow_widget_weather", value).apply()
