@@ -24,6 +24,8 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         visibility = View.GONE
         isClickable = true
     }
+    private val greeting = text("Bonjour", 34f, Color.WHITE)
+    private val profileTitle = text("Morning Glass", 18f, 0xFFB7CCE2.toInt())
     private val weather = tile("☀", "Météo", "En attente des données Home Assistant")
     private val calendar = tile("▦", "Calendrier", "En attente des événements du jour")
     private val traffic = tile("➜", "Trafic", "Destination à configurer")
@@ -41,8 +43,8 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
             setPadding(dp(24), dp(32), dp(24), dp(32))
         }
         content.addView(text("WALLDOCK  /  SMARTFLOW DAILY", 12f, 0xFF60D8F7.toInt()))
-        content.addView(text("Bonjour", 34f, Color.WHITE))
-        content.addView(text("Morning Glass", 18f, 0xFFB7CCE2.toInt()))
+        content.addView(greeting)
+        content.addView(profileTitle)
         content.addView(clock)
         content.addView(weather)
         content.addView(calendar)
@@ -54,6 +56,27 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         scroll.addView(content)
         view.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         parent.addView(view, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    fun applyProfile(profile: SmartFlowDailyConfig.Profile) {
+        when (profile) {
+            SmartFlowDailyConfig.Profile.MORNING -> {
+                greeting.text = "Bonjour"
+                profileTitle.text = "Morning Glass"
+            }
+            SmartFlowDailyConfig.Profile.DAY -> {
+                greeting.text = "Bonne journée"
+                profileTitle.text = "Day Flow"
+            }
+            SmartFlowDailyConfig.Profile.EVENING -> {
+                greeting.text = "Bonsoir"
+                profileTitle.text = "Evening Flow"
+            }
+            SmartFlowDailyConfig.Profile.NIGHT -> {
+                greeting.text = "Bonne nuit"
+                profileTitle.text = "Night Flow"
+            }
+        }
     }
 
     fun applyConfig(config: SmartFlowDailyConfig) {
