@@ -716,6 +716,8 @@ class MainActivity : Activity(), DashboardController {
             smartFlowScreen.view.visibility == View.VISIBLE -> {
                 smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
                 smartFlowScreen.view.visibility = View.GONE
+                smartFlowCurrentProfile = null
+                smartFlowLastRefresh = 0L
             }
             calendarScreen.isOpen -> calendarScreen.close()
             dockPanel.visibility == View.VISIBLE -> setDockVisible(false)
