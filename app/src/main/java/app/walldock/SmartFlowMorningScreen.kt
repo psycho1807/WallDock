@@ -29,6 +29,8 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
     private val weather = tile("☀", "Météo", "En attente des données Home Assistant")
     private val calendar = tile("▦", "Calendrier", "En attente des événements du jour")
     private val traffic = tile("➜", "Trafic", "Destination à configurer")
+    private val homeStatus = tile("⌂", "Maison", "Aperçu Home Assistant disponible")
+    private val security = tile("◈", "Sécurité", "État de l'alarme non chargé")
     private val clock = TextClock(activity).apply {
         format24Hour = "HH:mm"
         format12Hour = "HH:mm"
@@ -49,6 +51,8 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         content.addView(weather)
         content.addView(calendar)
         content.addView(traffic)
+        content.addView(homeStatus)
+        content.addView(security)
         val returnButton = text("✕  Retour à Home Assistant (pause 1 min)", 16f, 0xFF60D8F7.toInt())
         returnButton.setPadding(dp(12), dp(16), dp(12), dp(16))
         returnButton.setOnClickListener { onDismiss?.invoke() }
@@ -59,6 +63,8 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
     }
 
     fun applyProfile(profile: SmartFlowDailyConfig.Profile) {
+        homeStatus.visibility = if (profile == SmartFlowDailyConfig.Profile.DAY || profile == SmartFlowDailyConfig.Profile.EVENING) View.VISIBLE else View.GONE
+        security.visibility = if (profile == SmartFlowDailyConfig.Profile.EVENING || profile == SmartFlowDailyConfig.Profile.NIGHT) View.VISIBLE else View.GONE
         when (profile) {
             SmartFlowDailyConfig.Profile.MORNING -> {
                 greeting.text = "Bonjour"
@@ -88,6 +94,14 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         (traffic.getChildAt(1) as? TextView)?.text =
             if (destination.isBlank()) "Destination à configurer"
             else "Vers $destination · données de trafic non connectées"
+    }
+
+    fun updateSecurity(value: String) {
+        (security.getChildAt(1) as? TextView)?.text = value
+    }
+
+    fun updateHomeStatus(value: String) {
+        (homeStatus.getChildAt(1) as? TextView)?.text = value
     }
 
     fun updateTraffic(value: String, destination: String) {
