@@ -59,6 +59,7 @@ class MainActivity : Activity(), DashboardController {
     private lateinit var smartFlowScreen: SmartFlowMorningScreen
     private lateinit var smartFlowData: SmartFlowHomeAssistantData
     private var smartFlowLastRefresh = 0L
+    private var smartFlowCurrentProfile: SmartFlowDailyConfig.Profile? = null
     private var smartFlowPausedUntil = 0L
     private val smartFlowCheck = object : Runnable {
         override fun run() {
@@ -81,11 +82,14 @@ class MainActivity : Activity(), DashboardController {
 
     private fun updateSmartFlow() {
         if (!::smartFlowScreen.isInitialized) return
+        val profile = smartFlowConfig.currentProfile()
         val shouldShow = AppState.dashboardVisible && AppState.screenOn &&
             !calendarScreen.isOpen &&
             SystemClock.elapsedRealtime() >= smartFlowPausedUntil &&
-            smartFlowConfig.isMorningActive()
-        if (shouldShow && smartFlowScreen.view.visibility != View.VISIBLE) {
+            profile != null
+        if (shouldShow && (smartFlowScreen.view.visibility != View.VISIBLE || smartFlowCurrentProfile != profile)) {
+            smartFlowCurrentProfile = profile
+            smartFlowScreen.applyProfile(profile!!)
             smartFlowScreen.applyConfig(smartFlowConfig)
             smartFlowScreen.view.visibility = View.VISIBLE
             setDockVisible(false)
@@ -93,6 +97,7 @@ class MainActivity : Activity(), DashboardController {
         } else if (shouldShow && SystemClock.elapsedRealtime() - smartFlowLastRefresh > 5 * 60_000L) {
             refreshSmartFlowData()
         } else if (!shouldShow) {
+            smartFlowCurrentProfile = null
             smartFlowScreen.view.visibility = View.GONE
         }
     }
