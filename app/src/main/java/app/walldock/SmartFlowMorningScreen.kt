@@ -18,6 +18,7 @@ import android.widget.TextView
  * Les fournisseurs météo/calendrier/trafic seront branchés dans une étape suivante.
  */
 class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout) {
+    var onDismiss: (() -> Unit)? = null
     val view = FrameLayout(activity).apply {
         setBackgroundColor(0xFF071322.toInt())
         visibility = View.GONE
