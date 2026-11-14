@@ -187,7 +187,7 @@ class MainActivity : Activity(), DashboardController {
         offlineScreen.addView(offlineColumn, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.CENTER))
         root.addView(offlineScreen, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         smartFlowScreen = SmartFlowMorningScreen(this, root)
-        smartFlowScreen.view.setOnClickListener {
+        smartFlowScreen.onDismiss = {
             smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
             smartFlowScreen.view.visibility = View.GONE
         }
