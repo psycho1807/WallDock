@@ -1,11 +1,16 @@
 package app.walldock
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
@@ -19,6 +24,48 @@ import java.util.concurrent.Executors
  * Aucun compte ni jeton : l'API publique suffit.
  */
 object Updater {
+
+    private const val CHANNEL_ID = "walldock_updates"
+    private const val NOTIFICATION_ID = 173
+    private const val CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L
+
+    /** Check once a day while WallDock is running, without downloading or installing silently. */
+    fun checkPeriodically(context: Context) {
+        if (BuildConfig.PLAY_STORE) return
+        val app = context.applicationContext
+        val prefs = Prefs(app)
+        if (!prefs.autoUpdate) return
+        val store = app.getSharedPreferences("walldock_update_checks", Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val last = store.getLong("last_check", 0L)
+        if (last > 0L && now >= last && now - last < CHECK_INTERVAL_MS) return
+        store.edit().putLong("last_check", now).apply()
+        check(app, install = false)
+    }
+
+    private fun notifyAvailable(context: Context, version: String) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= 26) {
+            manager.createNotificationChannel(NotificationChannel(
+                CHANNEL_ID, "Mises à jour WallDock", NotificationManager.IMPORTANCE_DEFAULT
+            ))
+        }
+        val intent = Intent(context, SettingsActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val pending = PendingIntent.getActivity(context, 173, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notification = Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("WallDock $version disponible")
+            .setContentText("Ouvrir les réglages pour installer la mise à jour.")
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(NOTIFICATION_ID, notification)
+    }
 
     private const val LATEST_RELEASE = "https://api.github.com/repos/psycho1807/WallDock/releases/latest"
     const val ACTION_INSTALL_STATUS = "app.walldock.INSTALL_STATUS"
@@ -84,6 +131,7 @@ object Updater {
         }
         if (!install) {
             setStatus(tr(R.string.upd_available, latest))
+            notifyAvailable(context, latest)
             return
         }
         if (!context.packageManager.canRequestPackageInstalls()) {
