@@ -7,6 +7,30 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 ---
 
+## 🧪 En développement : SmartFlow Daily (v0.17.3)
+
+> **Travaux en cours sur la branche `feature/smartflow-v17.3`.** Ces fonctionnalités ne sont pas encore disponibles dans la version publiée.
+
+**Morning Glass** est un futur écran matinal natif de WallDock, prévu de **06:00 à 10:00** (horaires personnalisables) :
+
+- Horloge locale, météo Home Assistant et rendez-vous du calendrier.
+- Trafic vers une destination choisie (fournisseur de données à intégrer).
+- Interface panoramique avec cartes translucides et fond personnalisable.
+- Retour au dashboard Home Assistant en conservant sa WebView.
+- Paramètres locaux, désactivés par défaut pendant le développement.
+
+**État actuel :** modèle de configuration et validation de la plage horaire ajoutés ; interface, connexions de données et navigation automatique restent à développer et tester.
+
+**Captures :** des visuels de concept et de véritables captures seront ajoutés ici après intégration et vérification. Aucun visuel de démonstration n'est présenté comme une capture fonctionnelle.
+
+### English: SmartFlow Daily (v0.17.3, work in progress)
+
+> Under development on `feature/smartflow-v17.3`; **not yet available** in the released app.
+
+Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, configurable commute traffic, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. The initial configuration model is committed; UI, live data, automatic switching and screenshots are pending.
+
+---
+
 ## Ce que fait WallDock
 
 **Kiosque**
