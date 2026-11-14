@@ -12,7 +12,7 @@ import org.json.JSONObject
  */
 class SmartFlowHomeAssistantData(private val web: WebView) {
     private val handler = Handler(Looper.getMainLooper())
-    private var callback: ((String, String) -> Unit)? = null
+    private var callback: ((String, String, String) -> Unit)? = null
 
     init {
         web.addJavascriptInterface(Bridge(), "WallDockSmartFlow")
@@ -26,15 +26,17 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
                 val error = result.optString("error")
                 callback?.invoke(
                     if (error.isNotBlank()) error else result.optString("weather", "Météo indisponible"),
-                    if (error.isNotBlank()) error else result.optString("calendar", "Calendrier indisponible")
+                    if (error.isNotBlank()) error else result.optString("calendar", "Calendrier indisponible"),
+                    if (error.isNotBlank()) error else result.optString("traffic", "Trafic non configuré")
                 )
                 callback = null
             }
         }
     }
 
-    fun refresh(onResult: (weather: String, calendar: String) -> Unit) {
+    fun refresh(trafficEntityId: String, onResult: (weather: String, calendar: String, traffic: String) -> Unit) {
         callback = onResult
+        val sensorId = if (Regex("^sensor\\\\.[a-z0-9_]+$").matches(trafficEntityId)) trafficEntityId else ""
         val script = """
             (async function () {
               try {
@@ -71,12 +73,23 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
                   events.sort((a,b) => a.at - b.at);
                   if (events.length) calendar = events.slice(0, 3).map(e => e.title).join(' · ');
                 }
-                WallDockSmartFlow.onData(JSON.stringify({weather, calendar}));
+                const trafficId = '__TRAFFIC_SENSOR__';
+                let traffic = 'Capteur de trajet non configuré';
+                if (trafficId) {
+                  const travel = states[trafficId];
+                  if (!travel || ['unknown', 'unavailable'].includes(travel.state)) {
+                    traffic = 'Capteur de trajet indisponible';
+                  } else {
+                    const unit = (travel.attributes && travel.attributes.unit_of_measurement) || '';
+                    traffic = travel.state + (unit ? ' ' + unit : '');
+                  }
+                }
+                WallDockSmartFlow.onData(JSON.stringify({weather, calendar, traffic}));
               } catch (e) {
                 WallDockSmartFlow.onData(JSON.stringify({error: 'Données Home Assistant indisponibles'}));
               }
             })();
         """.trimIndent()
-        web.evaluateJavascript(script, null)
+        web.evaluateJavascript(script.replace("__TRAFFIC_SENSOR__", sensorId), null)
     }
 }
