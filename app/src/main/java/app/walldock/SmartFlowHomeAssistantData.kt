@@ -12,7 +12,7 @@ import org.json.JSONObject
  */
 class SmartFlowHomeAssistantData(private val web: WebView) {
     private val handler = Handler(Looper.getMainLooper())
-    private var callback: ((String, String, String) -> Unit)? = null
+    private var callback: ((String, String, String, String, String) -> Unit)? = null
 
     init {
         web.addJavascriptInterface(Bridge(), "WallDockSmartFlow")
@@ -27,14 +27,16 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
                 callback?.invoke(
                     if (error.isNotBlank()) error else result.optString("weather", "Météo indisponible"),
                     if (error.isNotBlank()) error else result.optString("calendar", "Calendrier indisponible"),
-                    if (error.isNotBlank()) error else result.optString("traffic", "Trafic non configuré")
+                    if (error.isNotBlank()) error else result.optString("traffic", "Trafic non configuré"),
+                    if (error.isNotBlank()) error else result.optString("home", "Maison indisponible"),
+                    if (error.isNotBlank()) error else result.optString("security", "Sécurité indisponible")
                 )
                 callback = null
             }
         }
     }
 
-    fun refresh(trafficEntityId: String, onResult: (weather: String, calendar: String, traffic: String) -> Unit) {
+    fun refresh(trafficEntityId: String, onResult: (weather: String, calendar: String, traffic: String, home: String, security: String) -> Unit) {
         callback = onResult
         val sensorId = if (Regex("^sensor\\.[a-z0-9_]+$").matches(trafficEntityId)) trafficEntityId else ""
         val script = """
@@ -84,7 +86,14 @@ class SmartFlowHomeAssistantData(private val web: WebView) {
                     traffic = travel.state + (unit ? ' ' + unit : '');
                   }
                 }
-                WallDockSmartFlow.onData(JSON.stringify({weather, calendar, traffic}));
+                const lights = Object.keys(states).filter(id => id.startsWith('light.') && states[id].state === 'on').length;
+                const switches = Object.keys(states).filter(id => id.startsWith('switch.') && states[id].state === 'on').length;
+                const home = lights + ' lumière(s) allumée(s) · ' + switches + ' interrupteur(s) actif(s)';
+                const alarms = Object.keys(states).filter(id => id.startsWith('alarm_control_panel.'));
+                const security = alarms.length
+                  ? alarms.slice(0, 2).map(id => (states[id].attributes.friendly_name || id) + ' : ' + states[id].state).join(' · ')
+                  : 'Aucune alarme Home Assistant configurée';
+                WallDockSmartFlow.onData(JSON.stringify({weather, calendar, traffic, home, security}));
               } catch (e) {
                 WallDockSmartFlow.onData(JSON.stringify({error: 'Données Home Assistant indisponibles'}));
               }
