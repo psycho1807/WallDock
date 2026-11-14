@@ -14,12 +14,12 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 **Morning Glass** est un futur écran matinal natif de WallDock, prévu de **06:00 à 10:00** (horaires et jours personnalisables) :
 
 - Horloge locale, météo Home Assistant et rendez-vous du calendrier.
-- Trafic vers une destination choisie (fournisseur de données à intégrer).
+- Durée du trajet via une entité Home Assistant `sensor.*` choisie dans les réglages (nécessite un capteur de trajet existant).
 - Interface panoramique avec cartes translucides et fond personnalisable.
 - Retour au dashboard Home Assistant en conservant sa WebView.
 - Paramètres locaux, désactivés par défaut pendant le développement.
 
-**État actuel :** aperçu natif Morning Glass, horaires personnalisables, choix des widgets et retour temporaire au dashboard implémentés sur la branche de développement. L'activation est désactivée par défaut. **La météo et les événements du jour sont maintenant lus via la session Home Assistant de la WebView. Le trafic n'est pas encore connecté. Les nouvelles modifications doivent être recompilées et testées sur tablette.**
+**État actuel :** aperçu natif Morning Glass, horaires personnalisables, choix des widgets et retour temporaire au dashboard implémentés sur la branche de développement. L'activation est désactivée par défaut. **La météo et les événements du jour sont maintenant lus via la session Home Assistant de la WebView. Le trajet peut désormais lire un capteur `sensor.*` de Home Assistant ; aucune API cartographique directe n'est intégrée. Les nouvelles modifications doivent être recompilées et testées sur tablette.**
 
 **Captures :** des visuels de concept et de véritables captures seront ajoutés ici après intégration et vérification. Aucun visuel de démonstration n'est présenté comme une capture fonctionnelle.
 
@@ -27,7 +27,7 @@ Licence GPL v3 · [Dernière version](https://github.com/psycho1807/WallDock/rel
 
 > Under development on `feature/smartflow-v17.3`; **not yet available** in the released app.
 
-Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, configurable commute traffic, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours and weekdays, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Traffic data is not yet connected. The latest changes still need a fresh build and device tests.**
+Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, commute time from a configured Home Assistant sensor, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours and weekdays, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Commute duration can now be read from a user-selected Home Assistant `sensor.*` entity; there is no built-in maps provider. The latest changes still need a fresh build and device tests.**
 
 ---
 
