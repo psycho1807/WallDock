@@ -59,6 +59,7 @@ class SettingsActivity : Activity() {
     private lateinit var smartFlowClock: CheckBox
     private lateinit var smartFlowTraffic: CheckBox
     private lateinit var smartFlowDestination: EditText
+    private lateinit var smartFlowTrafficSensor: EditText
     private val smartFlowDays = mutableListOf<CheckBox>()
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
@@ -376,6 +377,9 @@ class SettingsActivity : Activity() {
         column.addView(label("Destination du trajet (facultatif)"))
         smartFlowDestination = field(smartFlowConfig.trafficDestination, "Adresse ou lieu", InputType.TYPE_CLASS_TEXT)
         column.addView(smartFlowDestination)
+        column.addView(label("Entité HA durée du trajet (sensor.*)"))
+        smartFlowTrafficSensor = field(smartFlowConfig.trafficSensor, "sensor.temps_trajet", InputType.TYPE_CLASS_TEXT)
+        column.addView(smartFlowTrafficSensor)
         column.addView(label("Aperçu : météo, calendrier et trafic ne sont pas encore connectés aux données réelles."))
 
         // Réveils
@@ -514,6 +518,8 @@ class SettingsActivity : Activity() {
         val smartFlowEndValue = smartFlowEnd.text.toString().trim()
         val validTime = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         when {
+            smartFlowTrafficSensor.text.toString().trim().let { it.isNotEmpty() && !Regex("^sensor\\.[a-z0-9_]+$").matches(it) } ->
+                toast("SmartFlow : entité de trajet invalide (sensor.nom)")
             smartFlowEnabled.isChecked && smartFlowDays.none { it.isChecked } ->
                 toast("SmartFlow : sélectionne au moins un jour")
             !validTime.matches(smartFlowStartValue) || !validTime.matches(smartFlowEndValue) || smartFlowStartValue == smartFlowEndValue ->
@@ -548,6 +554,7 @@ class SettingsActivity : Activity() {
                 smartFlowConfig.clockEnabled = smartFlowClock.isChecked
                 smartFlowConfig.trafficEnabled = smartFlowTraffic.isChecked
                 smartFlowConfig.trafficDestination = smartFlowDestination.text.toString()
+                smartFlowConfig.trafficSensor = smartFlowTrafficSensor.text.toString()
                 smartFlowConfig.enabled = smartFlowEnabled.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
