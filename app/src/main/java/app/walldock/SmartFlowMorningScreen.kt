@@ -47,7 +47,10 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         content.addView(weather)
         content.addView(calendar)
         content.addView(traffic)
-        content.addView(text("Touchez l'écran pour revenir temporairement à Home Assistant.", 13f, 0xFF90A7BF.toInt()))
+        val returnButton = text("✕  Retour à Home Assistant (pause 1 min)", 16f, 0xFF60D8F7.toInt())
+        returnButton.setPadding(dp(12), dp(16), dp(12), dp(16))
+        returnButton.setOnClickListener { onDismiss?.invoke() }
+        content.addView(returnButton)
         scroll.addView(content)
         view.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         parent.addView(view, FrameLayout.LayoutParams(-1, -1))
@@ -62,6 +65,14 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         (traffic.getChildAt(1) as? TextView)?.text =
             if (destination.isBlank()) "Destination à configurer"
             else "Vers $destination · données de trafic non connectées"
+    }
+
+    fun updateWeather(value: String) {
+        (weather.getChildAt(1) as? TextView)?.text = value
+    }
+
+    fun updateCalendar(value: String) {
+        (calendar.getChildAt(1) as? TextView)?.text = value
     }
 
     private fun tile(icon: String, title: String, detail: String): LinearLayout {
