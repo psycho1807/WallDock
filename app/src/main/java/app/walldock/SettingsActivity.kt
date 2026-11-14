@@ -50,6 +50,15 @@ class SettingsActivity : Activity() {
     private lateinit var listenOffCheck: CheckBox
     private lateinit var sendspinCheck: CheckBox
     private lateinit var calendarCheck: CheckBox
+    private lateinit var smartFlowConfig: SmartFlowDailyConfig
+    private lateinit var smartFlowEnabled: CheckBox
+    private lateinit var smartFlowStart: EditText
+    private lateinit var smartFlowEnd: EditText
+    private lateinit var smartFlowWeather: CheckBox
+    private lateinit var smartFlowCalendar: CheckBox
+    private lateinit var smartFlowClock: CheckBox
+    private lateinit var smartFlowTraffic: CheckBox
+    private lateinit var smartFlowDestination: EditText
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
     private lateinit var wakeField: EditText
@@ -68,6 +77,7 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        smartFlowConfig = SmartFlowDailyConfig(this)
         dockSelection.addAll(prefs.dockApps)
         // Android 13+ (obligatoire à partir d'Android 16) : retour géré par un rappel
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -324,6 +334,36 @@ class SettingsActivity : Activity() {
         calendarCheck.isChecked = prefs.calendarInDock
         column.addView(calendarCheck)
 
+        // SmartFlow Daily : aperçu natif du matin (données réelles à venir)
+        column.addView(heading("SmartFlow Daily · Morning Glass (aperçu)", 18f))
+        smartFlowEnabled = CheckBox(this).apply {
+            text = "Activer Morning Glass automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.enabled
+        }
+        column.addView(smartFlowEnabled)
+        column.addView(label("Début (HH:mm)"))
+        smartFlowStart = field(smartFlowConfig.startTime, "06:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowStart)
+        column.addView(label("Fin (HH:mm)"))
+        smartFlowEnd = field(smartFlowConfig.endTime, "10:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowEnd)
+        fun smartFlowCheck(label: String, checked: Boolean): CheckBox =
+            CheckBox(this).apply {
+                text = label
+                setTextColor(Color.WHITE)
+                isChecked = checked
+                column.addView(this)
+            }
+        smartFlowWeather = smartFlowCheck("Météo", smartFlowConfig.weatherEnabled)
+        smartFlowCalendar = smartFlowCheck("Calendrier", smartFlowConfig.calendarEnabled)
+        smartFlowClock = smartFlowCheck("Horloge", smartFlowConfig.clockEnabled)
+        smartFlowTraffic = smartFlowCheck("Trafic", smartFlowConfig.trafficEnabled)
+        column.addView(label("Destination du trajet (facultatif)"))
+        smartFlowDestination = field(smartFlowConfig.trafficDestination, "Adresse ou lieu", InputType.TYPE_CLASS_TEXT)
+        column.addView(smartFlowDestination)
+        column.addView(label("Aperçu : météo, calendrier et trafic ne sont pas encore connectés aux données réelles."))
+
         // Réveils
         column.addView(heading(tr(R.string.alarm_section), 18f))
         column.addView(label(tr(R.string.alarm_help)))
@@ -456,7 +496,12 @@ class SettingsActivity : Activity() {
         val pin = pinField.text.toString().trim()
         val delay = delayField.text.toString().trim().toIntOrNull() ?: 0
         val saverMinutes = saverField.text.toString().trim().toIntOrNull() ?: 0
+        val smartFlowStartValue = smartFlowStart.text.toString().trim()
+        val smartFlowEndValue = smartFlowEnd.text.toString().trim()
+        val validTime = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         when {
+            !validTime.matches(smartFlowStartValue) || !validTime.matches(smartFlowEndValue) || smartFlowStartValue == smartFlowEndValue ->
+                toast("SmartFlow : horaires invalides (HH:mm, début différent de fin)")
             saverCheck.isChecked && saverMinutes < 1 -> toast(tr(R.string.error_saver_delay))
             !(url.startsWith("http://") || url.startsWith("https://")) ->
                 toast(tr(R.string.error_url))
@@ -479,6 +524,14 @@ class SettingsActivity : Activity() {
                 prefs.sendspinEnabled = sendspinCheck.isChecked
                 ApiService.instance?.applySendspin()
                 prefs.calendarInDock = calendarCheck.isChecked
+                smartFlowConfig.startTime = smartFlowStartValue
+                smartFlowConfig.endTime = smartFlowEndValue
+                smartFlowConfig.weatherEnabled = smartFlowWeather.isChecked
+                smartFlowConfig.calendarEnabled = smartFlowCalendar.isChecked
+                smartFlowConfig.clockEnabled = smartFlowClock.isChecked
+                smartFlowConfig.trafficEnabled = smartFlowTraffic.isChecked
+                smartFlowConfig.trafficDestination = smartFlowDestination.text.toString()
+                smartFlowConfig.enabled = smartFlowEnabled.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
                 wakeField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.wakeTime = it }
