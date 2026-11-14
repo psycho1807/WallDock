@@ -25,6 +25,7 @@ import java.util.concurrent.Executors
  */
 object Updater {
 
+    const val EXTRA_INSTALL_UPDATE = "app.walldock.INSTALL_UPDATE"
     private const val CHANNEL_ID = "walldock_updates"
     private const val NOTIFICATION_ID = 173
     private const val CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L
@@ -53,6 +54,7 @@ object Updater {
             ))
         }
         val intent = Intent(context, SettingsActivity::class.java).apply {
+            putExtra(EXTRA_INSTALL_UPDATE, true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         val pending = PendingIntent.getActivity(context, 173, intent,
@@ -60,7 +62,7 @@ object Updater {
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle("WallDock $version disponible")
-            .setContentText("Ouvrir les réglages pour installer la mise à jour.")
+.setContentText("Appuyer pour télécharger et installer la mise à jour.")
             .setContentIntent(pending)
             .setAutoCancel(true)
             .build()
