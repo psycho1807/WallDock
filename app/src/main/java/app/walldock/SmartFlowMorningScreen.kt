@@ -10,6 +10,8 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextClock
+import android.text.format.DateFormat
+import java.util.Date
 import android.widget.TextView
 
 /**
@@ -20,12 +22,13 @@ import android.widget.TextView
 class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout) {
     var onDismiss: (() -> Unit)? = null
     val view = FrameLayout(activity).apply {
-        setBackgroundColor(0xFF071322.toInt())
+        background = backgroundFor(SmartFlowDailyConfig.Profile.MORNING)
         visibility = View.GONE
         isClickable = true
     }
     private val greeting = text("Bonjour", 34f, Color.WHITE)
     private val profileTitle = text("Morning Glass", 18f, 0xFFB7CCE2.toInt())
+    private val dateLabel = text("", 17f, 0xFFB7CCE2.toInt())
     private val weather = tile("☀", "Météo", "En attente des données Home Assistant")
     private val calendar = tile("▦", "Calendrier", "En attente des événements du jour")
     private val traffic = tile("➜", "Trafic", "Destination à configurer")
@@ -48,6 +51,7 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
         content.addView(greeting)
         content.addView(profileTitle)
         content.addView(clock)
+        content.addView(dateLabel)
         content.addView(weather)
         content.addView(calendar)
         content.addView(traffic)
@@ -63,6 +67,11 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
     }
 
     fun applyProfile(profile: SmartFlowDailyConfig.Profile) {
+        view.background = backgroundFor(profile)
+        dateLabel.text = DateFormat.format("EEEE d MMMM yyyy", Date()).toString()
+        weather.visibility = if (profile == SmartFlowDailyConfig.Profile.NIGHT) View.GONE else View.VISIBLE
+        calendar.visibility = if (profile == SmartFlowDailyConfig.Profile.NIGHT || profile == SmartFlowDailyConfig.Profile.EVENING) View.GONE else View.VISIBLE
+        traffic.visibility = if (profile == SmartFlowDailyConfig.Profile.MORNING) View.VISIBLE else View.GONE
         homeStatus.visibility = if (profile == SmartFlowDailyConfig.Profile.DAY || profile == SmartFlowDailyConfig.Profile.EVENING) View.VISIBLE else View.GONE
         security.visibility = if (profile == SmartFlowDailyConfig.Profile.EVENING || profile == SmartFlowDailyConfig.Profile.NIGHT) View.VISIBLE else View.GONE
         when (profile) {
@@ -86,10 +95,11 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
     }
 
     fun applyConfig(config: SmartFlowDailyConfig) {
-        weather.visibility = if (config.weatherEnabled) View.VISIBLE else View.GONE
-        calendar.visibility = if (config.calendarEnabled) View.VISIBLE else View.GONE
+        // Ne pas écraser la visibilité liée au profil : appliquer les options après.
+        weather.visibility = if (config.weatherEnabled && weather.visibility == View.VISIBLE) View.VISIBLE else View.GONE
+        calendar.visibility = if (config.calendarEnabled && calendar.visibility == View.VISIBLE) View.VISIBLE else View.GONE
+        traffic.visibility = if (config.trafficEnabled && traffic.visibility == View.VISIBLE) View.VISIBLE else View.GONE
         clock.visibility = if (config.clockEnabled) View.VISIBLE else View.GONE
-        traffic.visibility = if (config.trafficEnabled) View.VISIBLE else View.GONE
         val destination = config.trafficDestination
         (traffic.getChildAt(1) as? TextView)?.text =
             if (destination.isBlank()) "Destination à configurer"
@@ -115,6 +125,16 @@ class SmartFlowMorningScreen(private val activity: Activity, parent: FrameLayout
 
     fun updateCalendar(value: String) {
         (calendar.getChildAt(1) as? TextView)?.text = value
+    }
+
+    private fun backgroundFor(profile: SmartFlowDailyConfig.Profile): GradientDrawable {
+        val colors = when (profile) {
+            SmartFlowDailyConfig.Profile.MORNING -> intArrayOf(0xFF18385A.toInt(), 0xFF0B2037.toInt(), 0xFF071322.toInt())
+            SmartFlowDailyConfig.Profile.DAY -> intArrayOf(0xFF194D66.toInt(), 0xFF102D42.toInt(), 0xFF0A1829.toInt())
+            SmartFlowDailyConfig.Profile.EVENING -> intArrayOf(0xFF49334F.toInt(), 0xFF251D38.toInt(), 0xFF0B1324.toInt())
+            SmartFlowDailyConfig.Profile.NIGHT -> intArrayOf(0xFF101D37.toInt(), 0xFF0B1427.toInt(), 0xFF050914.toInt())
+        }
+        return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors)
     }
 
     private fun tile(icon: String, title: String, detail: String): LinearLayout {
