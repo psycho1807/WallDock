@@ -85,6 +85,7 @@ class MainActivity : Activity(), DashboardController {
         if (!::smartFlowScreen.isInitialized) return
         val profile = smartFlowConfig.currentProfile()
         val shouldShow = AppState.dashboardVisible && AppState.screenOn &&
+            offlineScreen.visibility != View.VISIBLE &&
             !calendarScreen.isOpen &&
             SystemClock.elapsedRealtime() >= smartFlowPausedUntil &&
             profile != null
