@@ -479,21 +479,37 @@ class SettingsActivity : Activity() {
         updateText.text = updateLine(Updater.status)
         updateJarvisStatus()
         Updater.addListener(updateListener)
-        if (!BuildConfig.PLAY_STORE && intent.getBooleanExtra(Updater.EXTRA_INSTALL_UPDATE, false)) {
-            intent.removeExtra(Updater.EXTRA_INSTALL_UPDATE)
-            if (packageManager.canRequestPackageInstalls()) {
-                Updater.check(this, install = true)
-            } else {
-                AlertDialog.Builder(this)
-                    .setTitle("Autorisation nécessaire")
-                    .setMessage("Autorise WallDock à installer des applications, puis relance la mise à jour.")
-                    .setPositiveButton("Ouvrir les autorisations") { _, _ ->
-                        open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
-                    }
-                    .setNegativeButton("Plus tard", null)
-                    .show()
+        handleUpdateIntent(intent)
+    }
+
+    override fun onNewIntent(newIntent: Intent) {
+        super.onNewIntent(newIntent)
+        setIntent(newIntent)
+        handleUpdateIntent(newIntent)
+    }
+
+    private fun handleUpdateIntent(source: Intent) {
+        if (BuildConfig.PLAY_STORE || !source.getBooleanExtra(Updater.EXTRA_INSTALL_UPDATE, false)) return
+        source.removeExtra(Updater.EXTRA_INSTALL_UPDATE)
+        AlertDialog.Builder(this)
+            .setTitle("Mise à jour WallDock")
+            .setMessage("Télécharger la dernière version officielle depuis GitHub et lancer son installation ?")
+            .setPositiveButton("Installer") { _, _ ->
+                if (packageManager.canRequestPackageInstalls()) {
+                    Updater.check(this, install = true)
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("Autorisation nécessaire")
+                        .setMessage("Autorise WallDock à installer des applications dans les paramètres Android. Reviens ensuite ici et appuie sur « Rechercher les mises à jour ».")
+                        .setPositiveButton("Ouvrir les autorisations") { _, _ ->
+                            open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                        }
+                        .setNegativeButton("Plus tard", null)
+                        .show()
+                }
             }
-        }
+            .setNegativeButton("Plus tard", null)
+            .show()
     }
 
     override fun onPause() {
