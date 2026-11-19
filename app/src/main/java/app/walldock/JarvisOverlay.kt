@@ -37,6 +37,7 @@ class JarvisOverlay(private val context: Context, private val onTouched: () -> U
     enum class Mode { LISTENING, THINKING, SPEAKING, ERROR }
 
     private val handler = Handler(Looper.getMainLooper())
+    private val preferences = Prefs(context)
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private var root: View? = null
     private lateinit var orb: Orb
@@ -105,19 +106,19 @@ class JarvisOverlay(private val context: Context, private val onTouched: () -> U
     private fun create(): Boolean {
         if (!Settings.canDrawOverlays(context)) return false
         val frame = FrameLayout(context)
-        frame.setBackgroundColor(0xEB02060C.toInt())
+        frame.setBackgroundColor(if (preferences.assistantGotham) 0xF7020508.toInt() else 0xEB02060C.toInt())
         frame.setOnClickListener { onTouched() }
 
         val column = LinearLayout(context)
         column.orientation = LinearLayout.VERTICAL
         column.gravity = Gravity.CENTER_HORIZONTAL
 
-        val title = text("J.A.R.V.I.S.", 13f, 0xFF3FD4FF.toInt())
+        val title = text(preferences.assistantName, 13f, if (preferences.assistantGotham) 0xFFD8B66C.toInt() else 0xFF3FD4FF.toInt())
         title.letterSpacing = 0.5f
         title.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         column.addView(title)
 
-        orb = Orb(context)
+        orb = Orb(context, preferences.assistantGotham)
         orb.levelSource = { level }
         val size = context.dp(240)
         val orbParams = LinearLayout.LayoutParams(size, size)
@@ -178,7 +179,7 @@ class JarvisOverlay(private val context: Context, private val onTouched: () -> U
     }
 
     /** Anneau animé : arcs qui tournent, cœur qui respire, réagit à la voix. */
-    private class Orb(context: Context) : View(context) {
+    private class Orb(context: Context, private val gotham: Boolean) : View(context) {
         var mode = Mode.LISTENING
         var levelSource: () -> Float = { 0f }
         var running = false
@@ -202,7 +203,12 @@ class JarvisOverlay(private val context: Context, private val onTouched: () -> U
             val cx = width / 2f
             val cy = height / 2f
             val radius = min(width, height) / 2f
-            val color = when (mode) {
+            val color = if (gotham) when (mode) {
+                Mode.LISTENING -> 0xFFD5B66B.toInt()
+                Mode.THINKING -> 0xFFF7D177.toInt()
+                Mode.SPEAKING -> 0xFFEBC56E.toInt()
+                Mode.ERROR -> 0xFFF04C48.toInt()
+            } else when (mode) {
                 Mode.LISTENING -> 0xFF3FD4FF.toInt()
                 Mode.THINKING -> 0xFFFFB347.toInt()
                 Mode.SPEAKING -> 0xFF4DD9FF.toInt()
