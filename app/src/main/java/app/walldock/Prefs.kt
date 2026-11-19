@@ -52,6 +52,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_AUTO_UPDATE, true)
         set(value) = sp.edit().putBoolean(KEY_AUTO_UPDATE, value).apply()
 
+    /** Display label, independent from the wake-word recognition model. */
+    var assistantName: String
+        get() = sp.getString("assistant_display_name", "J.A.R.V.I.S.") ?: "J.A.R.V.I.S."
+        set(value) = sp.edit().putString("assistant_display_name", value.take(32)).apply()
+
+    /** Optional Gotham animated visual theme. */
+    var assistantGotham: Boolean
+        get() = sp.getBoolean("assistant_gotham", false)
+        set(value) = sp.edit().putBoolean("assistant_gotham", value).apply()
+
     /** Jarvis écoute « Hey Jarvis » en permanence (sinon seulement via le bouton). */
     var jarvisWakeWord: Boolean
         get() = sp.getBoolean(KEY_JARVIS_WAKE, true)
