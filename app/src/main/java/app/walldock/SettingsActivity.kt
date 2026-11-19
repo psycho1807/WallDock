@@ -59,6 +59,8 @@ class SettingsActivity : Activity() {
     private lateinit var onDeviceCheck: CheckBox
     private lateinit var motionCheck: CheckBox
     private lateinit var jarvisText: TextView
+    private lateinit var assistantNameField: EditText
+    private lateinit var assistantGothamCheck: CheckBox
     private lateinit var updateText: TextView
     private val updateListener: (String) -> Unit = { updateText.text = updateLine(it) }
 
@@ -220,7 +222,20 @@ class SettingsActivity : Activity() {
                 .show()
         })
 
-        column.addView(heading("Jarvis", 18f))
+        column.addView(heading("Assistant vocal", 18f))
+        column.addView(label("Nom affiché de l'assistant (Jarvis, Alfred…)"))
+        assistantNameField = EditText(this)
+        assistantNameField.setSingleLine(true)
+        assistantNameField.setText(prefs.assistantName)
+        assistantNameField.setTextColor(Color.WHITE)
+        assistantNameField.hint = "Alfred"
+        column.addView(assistantNameField)
+        assistantGothamCheck = CheckBox(this)
+        assistantGothamCheck.text = "Thème Gotham (anneau doré)"
+        assistantGothamCheck.setTextColor(Color.WHITE)
+        assistantGothamCheck.isChecked = prefs.assistantGotham
+        column.addView(assistantGothamCheck)
+        column.addView(label("Le nom affiché ne change pas le mot de réveil vocal."))
         jarvisText = TextView(this)
         jarvisText.setTextColor(0xFFB0C4E0.toInt())
         jarvisText.textSize = 14f
@@ -492,6 +507,8 @@ class SettingsActivity : Activity() {
                     }
                 }
                 AppState.controller?.applyScreen()
+                prefs.assistantName = assistantNameField.text.toString().trim().ifBlank { "J.A.R.V.I.S." }
+                prefs.assistantGotham = assistantGothamCheck.isChecked
                 val wakeChanged = prefs.jarvisWakeWord != jarvisCheck.isChecked
                 prefs.jarvisWakeWord = jarvisCheck.isChecked
                 val modeChanged = prefs.jarvisOnDevice != onDeviceCheck.isChecked
