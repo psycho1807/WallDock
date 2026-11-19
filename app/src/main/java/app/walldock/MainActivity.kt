@@ -55,6 +55,54 @@ class MainActivity : Activity(), DashboardController {
     /** Page affichée en écran de veille (si une adresse est réglée). */
     private var saverWeb: WebView? = null
     private lateinit var calendarScreen: CalendarScreen
+    private lateinit var smartFlowConfig: SmartFlowDailyConfig
+    private lateinit var smartFlowScreen: SmartFlowMorningScreen
+    private lateinit var smartFlowData: SmartFlowHomeAssistantData
+    private var smartFlowLastRefresh = 0L
+    private var smartFlowCurrentProfile: SmartFlowDailyConfig.Profile? = null
+    private var smartFlowPausedUntil = 0L
+    private val smartFlowCheck = object : Runnable {
+        override fun run() {
+            updateSmartFlow()
+            handler.postDelayed(this, 15_000)
+        }
+    }
+
+    private fun refreshSmartFlowData() {
+        smartFlowLastRefresh = SystemClock.elapsedRealtime()
+        smartFlowData.refresh(smartFlowConfig.trafficSensor) { weather, calendar, traffic, home, security ->
+            if (smartFlowScreen.view.visibility == View.VISIBLE) {
+                smartFlowScreen.updateWeather(weather)
+                smartFlowScreen.updateCalendar(calendar)
+                smartFlowScreen.updateTraffic(traffic, smartFlowConfig.trafficDestination)
+                smartFlowScreen.updateHomeStatus(home)
+                smartFlowScreen.updateSecurity(security)
+            }
+        }
+    }
+
+    private fun updateSmartFlow() {
+        if (!::smartFlowScreen.isInitialized) return
+        val profile = smartFlowConfig.currentProfile()
+        val shouldShow = AppState.dashboardVisible && AppState.screenOn &&
+            offlineScreen.visibility != View.VISIBLE &&
+            !calendarScreen.isOpen &&
+            SystemClock.elapsedRealtime() >= smartFlowPausedUntil &&
+            profile != null
+        if (shouldShow && (smartFlowScreen.view.visibility != View.VISIBLE || smartFlowCurrentProfile != profile)) {
+            smartFlowCurrentProfile = profile
+            smartFlowScreen.applyProfile(profile!!)
+            smartFlowScreen.applyConfig(smartFlowConfig)
+            smartFlowScreen.view.visibility = View.VISIBLE
+            setDockVisible(false)
+            refreshSmartFlowData()
+        } else if (shouldShow && SystemClock.elapsedRealtime() - smartFlowLastRefresh > 5 * 60_000L) {
+            refreshSmartFlowData()
+        } else if (!shouldShow) {
+            smartFlowCurrentProfile = null
+            smartFlowScreen.view.visibility = View.GONE
+        }
+    }
     /** Diaporama photos de l'écran de veille (Immich ou dossier). */
     private var slideshow: PhotoSlideshow? = null
     private var lastTouch = 0L
@@ -85,6 +133,7 @@ class MainActivity : Activity(), DashboardController {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        smartFlowConfig = SmartFlowDailyConfig(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val root = FrameLayout(this)
@@ -114,6 +163,7 @@ class MainActivity : Activity(), DashboardController {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         root.addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         calendarScreen = CalendarScreen(this, root, web)
+        smartFlowData = SmartFlowHomeAssistantData(web)
         // Zoom : la page est mise en page sur une surface plus grande (ou plus petite), puis
         // réduite (ou agrandie) pour remplir l'écran ; les touchers suivent automatiquement.
         root.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
@@ -161,6 +211,13 @@ class MainActivity : Activity(), DashboardController {
         offlineColumn.addView(retry, retryParams)
         offlineScreen.addView(offlineColumn, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.CENTER))
         root.addView(offlineScreen, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        smartFlowScreen = SmartFlowMorningScreen(this, root)
+        smartFlowScreen.onDismiss = {
+            smartFlowCurrentProfile = null
+            smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
+            smartFlowScreen.view.visibility = View.GONE
+            smartFlowLastRefresh = 0L
+        }
 
         // Dock
         dockRow = LinearLayout(this)
@@ -279,6 +336,7 @@ class MainActivity : Activity(), DashboardController {
         AppState.controller = this
         AppState.currentApp = tr(R.string.dashboard)
         ApiService.instance?.reportCurrentApp()
+        Updater.checkPeriodically(this)
         stopService(Intent(this, ReturnService::class.java))
         enterImmersive()
         applyScreen()
@@ -304,6 +362,8 @@ class MainActivity : Activity(), DashboardController {
         handler.postDelayed(screensaverCheck, 15_000)
         handler.removeCallbacks(healthCheck)
         handler.postDelayed(healthCheck, 5_000)
+        handler.removeCallbacks(smartFlowCheck)
+        handler.post(smartFlowCheck)
     }
 
     /** Jarvis : demande l'accès au micro une seule fois (ensuite via les réglages). */
@@ -512,6 +572,7 @@ class MainActivity : Activity(), DashboardController {
     override fun applySettings() {
         applyZoom()
         applyHandlePosition()
+        updateSmartFlow()
         showHome()
     }
 
@@ -535,6 +596,10 @@ class MainActivity : Activity(), DashboardController {
     override fun onPause() {
         handler.removeCallbacks(screensaverCheck)
         handler.removeCallbacks(healthCheck)
+        handler.removeCallbacks(smartFlowCheck)
+        smartFlowScreen.view.visibility = View.GONE
+        smartFlowCurrentProfile = null
+        smartFlowLastRefresh = 0L
         hideScreensaver()
         AppState.dashboardVisible = false
         setDockVisible(false)
@@ -588,10 +653,14 @@ class MainActivity : Activity(), DashboardController {
             "agenda", "liste", "schedule" -> CalendarScreen.Mode.AGENDA
             else -> CalendarScreen.Mode.WEEK
         }
+        smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
+        smartFlowScreen.view.visibility = View.GONE
         calendarScreen.open(mode)
     }
 
     override fun showHome() {
+        smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
+        smartFlowScreen.view.visibility = View.GONE
         if (calendarScreen.isOpen) calendarScreen.close()
         if (prefs.haUrl.isNotBlank() && web.url != prefs.haUrl) web.loadUrl(prefs.haUrl)
     }
@@ -601,6 +670,8 @@ class MainActivity : Activity(), DashboardController {
     }
 
     override fun openUrl(url: String) {
+        smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
+        smartFlowScreen.view.visibility = View.GONE
         setDockVisible(false)
         web.loadUrl(url)
     }
@@ -625,6 +696,7 @@ class MainActivity : Activity(), DashboardController {
     override fun onDestroy() {
         if (AppState.controller === this) AppState.controller = null
         handler.removeCallbacks(autoHideDock)
+        handler.removeCallbacks(smartFlowCheck)
         healthExecutor.shutdownNow()
         web.destroy()
         saverWeb?.destroy()
@@ -642,6 +714,12 @@ class MainActivity : Activity(), DashboardController {
     /** Mode kiosque : le bouton Retour ne quitte jamais l'appli. */
     private fun handleBack() {
         when {
+            smartFlowScreen.view.visibility == View.VISIBLE -> {
+                smartFlowPausedUntil = SystemClock.elapsedRealtime() + 60_000L
+                smartFlowScreen.view.visibility = View.GONE
+                smartFlowCurrentProfile = null
+                smartFlowLastRefresh = 0L
+            }
             calendarScreen.isOpen -> calendarScreen.close()
             dockPanel.visibility == View.VISIBLE -> setDockVisible(false)
             web.canGoBack() -> web.goBack()

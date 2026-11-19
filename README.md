@@ -16,6 +16,34 @@ WallDock est une application Android pensée pour **Home Assistant**, avec kiosq
 
 ---
 
+## 🧪 En développement : SmartFlow Daily (v0.17.3)
+
+> **Travaux en cours sur la branche `feature/smartflow-v17.3`.** Ces fonctionnalités ne sont pas encore disponibles dans la version publiée.
+
+**SmartFlow Daily** comporte maintenant quatre profils d'aperçu natifs : **Morning Glass (06:00–10:00)**, **Day Flow (10:00–18:00)**, **Evening Flow (18:00–22:00)** et **Night Flow (22:00–06:00)**. Les horaires et jours sont personnalisables et chaque profil est désactivé par défaut :
+
+- Horloge locale, météo Home Assistant et rendez-vous du calendrier.
+- Durée du trajet via une entité Home Assistant `sensor.*` choisie dans les réglages (nécessite un capteur de trajet existant).
+- Interface panoramique avec cartes translucides et fond personnalisable.
+- Retour au dashboard Home Assistant en conservant sa WebView.
+- Paramètres locaux, désactivés par défaut pendant le développement.
+
+**Day Flow, Evening Flow et Night Flow** réutilisent provisoirement la structure Morning Glass avec des titres adaptés. Des cartes d'état maison (lumières/interrupteurs) et sécurité (alarme) sont ajoutées pour les périodes concernées. Une première différenciation visuelle (dégradés par période, date et sélection des cartes) est intégrée. Les contrôles domotiques, les captures réelles et les tests sur tablette restent à faire.
+
+**État actuel :** aperçu natif Morning Glass, horaires personnalisables, choix des widgets et retour temporaire au dashboard implémentés sur la branche de développement. L'activation est désactivée par défaut. **La météo et les événements du jour sont maintenant lus via la session Home Assistant de la WebView. Le trajet peut désormais lire un capteur `sensor.*` de Home Assistant ; aucune API cartographique directe n'est intégrée. Les nouvelles modifications doivent être recompilées et testées sur tablette.**
+
+**Captures :** des visuels de concept et de véritables captures seront ajoutés ici après intégration et vérification. Aucun visuel de démonstration n'est présenté comme une capture fonctionnelle.
+
+### English: SmartFlow Daily (v0.17.3, work in progress)
+
+> Under development on `feature/smartflow-v17.3`; **not yet available** in the released app.
+
+The development branch now includes four disabled-by-default profile previews: **Morning (06:00–10:00), Day (10:00–18:00), Evening (18:00–22:00), and Night (22:00–06:00)**. Day, Evening and Night reuse the native preview layout for now. Home Assistant lights/switches and alarm status are shown where relevant; initial per-profile gradients, date and focused cards are in place; device tests and final visual polish are still pending.
+
+Planned **Morning Glass** experience: a configurable 06:00–10:00 morning view with a clock, Home Assistant weather and calendar, commute time from a configured Home Assistant sensor, translucent cards and a customizable background. The persistent Home Assistant WebView should remain loaded while the native morning screen is shown. A native preview screen, configurable hours and weekdays, widget toggles and a temporary return action are implemented on the development branch, disabled by default. **Weather and today's calendar events now use the existing Home Assistant WebView session. Commute duration can now be read from a user-selected Home Assistant `sensor.*` entity; there is no built-in maps provider. The latest changes still need a fresh build and device tests.**
+
+---
+
 ## Ce que fait WallDock
 
 **Kiosque**

@@ -1,5 +1,6 @@
 package app.walldock
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
@@ -50,6 +51,26 @@ class SettingsActivity : Activity() {
     private lateinit var listenOffCheck: CheckBox
     private lateinit var sendspinCheck: CheckBox
     private lateinit var calendarCheck: CheckBox
+    private lateinit var smartFlowConfig: SmartFlowDailyConfig
+    private lateinit var smartFlowEnabled: CheckBox
+    private lateinit var smartFlowEveningEnabled: CheckBox
+    private lateinit var smartFlowEveningStart: EditText
+    private lateinit var smartFlowEveningEnd: EditText
+    private lateinit var smartFlowNightEnabled: CheckBox
+    private lateinit var smartFlowNightStart: EditText
+    private lateinit var smartFlowNightEnd: EditText
+    private lateinit var smartFlowDayEnabled: CheckBox
+    private lateinit var smartFlowDayStart: EditText
+    private lateinit var smartFlowDayEnd: EditText
+    private lateinit var smartFlowStart: EditText
+    private lateinit var smartFlowEnd: EditText
+    private lateinit var smartFlowWeather: CheckBox
+    private lateinit var smartFlowCalendar: CheckBox
+    private lateinit var smartFlowClock: CheckBox
+    private lateinit var smartFlowTraffic: CheckBox
+    private lateinit var smartFlowDestination: EditText
+    private lateinit var smartFlowTrafficSensor: EditText
+    private val smartFlowDays = mutableListOf<CheckBox>()
     private lateinit var scheduleCheck: CheckBox
     private lateinit var sleepField: EditText
     private lateinit var wakeField: EditText
@@ -70,6 +91,7 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        smartFlowConfig = SmartFlowDailyConfig(this)
         dockSelection.addAll(prefs.dockApps)
         // Android 13+ (obligatoire à partir d'Android 16) : retour géré par un rappel
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -325,6 +347,15 @@ class SettingsActivity : Activity() {
         // Version Google Play : les mises à jour passent par le Play Store
         if (!BuildConfig.PLAY_STORE) {
             column.addView(updateCheck)
+            if (Build.VERSION.SDK_INT >= 33) {
+                column.addView(button("Autoriser les notifications de mise à jour") {
+                    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 173)
+                    } else {
+                        toast("Notifications déjà autorisées")
+                    }
+                })
+            }
             column.addView(button(tr(R.string.settings_allow_install)) {
                 open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
             })
@@ -338,6 +369,91 @@ class SettingsActivity : Activity() {
         calendarCheck.setTextColor(Color.WHITE)
         calendarCheck.isChecked = prefs.calendarInDock
         column.addView(calendarCheck)
+
+        // SmartFlow Daily : aperçu natif du matin (données réelles à venir)
+        column.addView(heading("SmartFlow Daily · Morning Glass (aperçu)", 18f))
+        smartFlowEnabled = CheckBox(this).apply {
+            text = "Activer Morning Glass automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.enabled
+        }
+        column.addView(smartFlowEnabled)
+        column.addView(label("Début (HH:mm)"))
+        smartFlowStart = field(smartFlowConfig.startTime, "06:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowStart)
+        column.addView(label("Fin (HH:mm)"))
+        smartFlowEnd = field(smartFlowConfig.endTime, "10:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowEnd)
+        column.addView(heading("Day Flow · Journée (aperçu)", 17f))
+        smartFlowDayEnabled = CheckBox(this).apply {
+            text = "Activer Day Flow automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.dayEnabled
+        }
+        column.addView(smartFlowDayEnabled)
+        column.addView(label("Début journée (HH:mm)"))
+        smartFlowDayStart = field(smartFlowConfig.dayStartTime, "10:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowDayStart)
+        column.addView(label("Fin journée (HH:mm)"))
+        smartFlowDayEnd = field(smartFlowConfig.dayEndTime, "18:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowDayEnd)
+        column.addView(heading("Evening Flow · Soir (aperçu)", 17f))
+        smartFlowEveningEnabled = CheckBox(this).apply {
+            text = "Activer Evening Flow automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.eveningEnabled
+        }
+        column.addView(smartFlowEveningEnabled)
+        column.addView(label("Début soir (HH:mm)"))
+        smartFlowEveningStart = field(smartFlowConfig.eveningStartTime, "18:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowEveningStart)
+        column.addView(label("Fin soir (HH:mm)"))
+        smartFlowEveningEnd = field(smartFlowConfig.eveningEndTime, "22:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowEveningEnd)
+        column.addView(heading("Night Flow · Nuit (aperçu)", 17f))
+        smartFlowNightEnabled = CheckBox(this).apply {
+            text = "Activer Night Flow automatiquement"
+            setTextColor(Color.WHITE)
+            isChecked = smartFlowConfig.nightEnabled
+        }
+        column.addView(smartFlowNightEnabled)
+        column.addView(label("Début nuit (HH:mm)"))
+        smartFlowNightStart = field(smartFlowConfig.nightStartTime, "22:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowNightStart)
+        column.addView(label("Fin nuit (HH:mm)"))
+        smartFlowNightEnd = field(smartFlowConfig.nightEndTime, "06:00", InputType.TYPE_CLASS_DATETIME or InputType.TYPE_DATETIME_VARIATION_TIME)
+        column.addView(smartFlowNightEnd)
+        column.addView(label("Jours d'activation"))
+        val dayLabels = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
+        val daysRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        dayLabels.forEachIndexed { index, name ->
+            val day = CheckBox(this).apply {
+                text = name
+                setTextColor(Color.WHITE)
+                isChecked = index + 1 in smartFlowConfig.activeDays
+            }
+            smartFlowDays.add(day)
+            daysRow.addView(day)
+        }
+        column.addView(daysRow)
+        fun smartFlowCheck(label: String, checked: Boolean): CheckBox =
+            CheckBox(this).apply {
+                text = label
+                setTextColor(Color.WHITE)
+                isChecked = checked
+                column.addView(this)
+            }
+        smartFlowWeather = smartFlowCheck("Météo", smartFlowConfig.weatherEnabled)
+        smartFlowCalendar = smartFlowCheck("Calendrier", smartFlowConfig.calendarEnabled)
+        smartFlowClock = smartFlowCheck("Horloge", smartFlowConfig.clockEnabled)
+        smartFlowTraffic = smartFlowCheck("Trafic", smartFlowConfig.trafficEnabled)
+        column.addView(label("Destination du trajet (facultatif)"))
+        smartFlowDestination = field(smartFlowConfig.trafficDestination, "Adresse ou lieu", InputType.TYPE_CLASS_TEXT)
+        column.addView(smartFlowDestination)
+        column.addView(label("Entité HA durée du trajet (sensor.*)"))
+        smartFlowTrafficSensor = field(smartFlowConfig.trafficSensor, "sensor.temps_trajet", InputType.TYPE_CLASS_TEXT)
+        column.addView(smartFlowTrafficSensor)
+        column.addView(label("Aperçu : météo, calendrier et trafic ne sont pas encore connectés aux données réelles."))
 
         // Réveils
         column.addView(heading(tr(R.string.alarm_section), 18f))
@@ -379,6 +495,37 @@ class SettingsActivity : Activity() {
         updateText.text = updateLine(Updater.status)
         updateJarvisStatus()
         Updater.addListener(updateListener)
+        handleUpdateIntent(intent)
+    }
+
+    override fun onNewIntent(newIntent: Intent) {
+        super.onNewIntent(newIntent)
+        setIntent(newIntent)
+        handleUpdateIntent(newIntent)
+    }
+
+    private fun handleUpdateIntent(source: Intent) {
+        if (BuildConfig.PLAY_STORE || !source.getBooleanExtra(Updater.EXTRA_INSTALL_UPDATE, false)) return
+        source.removeExtra(Updater.EXTRA_INSTALL_UPDATE)
+        AlertDialog.Builder(this)
+            .setTitle("Mise à jour WallDock")
+            .setMessage("Télécharger la dernière version officielle depuis GitHub et lancer son installation ?")
+            .setPositiveButton("Installer") { _, _ ->
+                if (packageManager.canRequestPackageInstalls()) {
+                    Updater.check(this, install = true)
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("Autorisation nécessaire")
+                        .setMessage("Autorise WallDock à installer des applications dans les paramètres Android. Reviens ensuite ici et appuie sur « Rechercher les mises à jour ».")
+                        .setPositiveButton("Ouvrir les autorisations") { _, _ ->
+                            open(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                        }
+                        .setNegativeButton("Plus tard", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Plus tard", null)
+            .show()
     }
 
     override fun onPause() {
@@ -471,7 +618,28 @@ class SettingsActivity : Activity() {
         val pin = pinField.text.toString().trim()
         val delay = delayField.text.toString().trim().toIntOrNull() ?: 0
         val saverMinutes = saverField.text.toString().trim().toIntOrNull() ?: 0
+        val smartFlowStartValue = smartFlowStart.text.toString().trim()
+        val smartFlowEndValue = smartFlowEnd.text.toString().trim()
+        val smartFlowDayStartValue = smartFlowDayStart.text.toString().trim()
+        val smartFlowDayEndValue = smartFlowDayEnd.text.toString().trim()
+        val smartFlowEveningStartValue = smartFlowEveningStart.text.toString().trim()
+        val smartFlowEveningEndValue = smartFlowEveningEnd.text.toString().trim()
+        val smartFlowNightStartValue = smartFlowNightStart.text.toString().trim()
+        val smartFlowNightEndValue = smartFlowNightEnd.text.toString().trim()
+        val validTime = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         when {
+            smartFlowTrafficSensor.text.toString().trim().let { it.isNotEmpty() && !Regex("^sensor\\.[a-z0-9_]+$").matches(it) } ->
+                toast("SmartFlow : entité de trajet invalide (sensor.nom)")
+            !validTime.matches(smartFlowEveningStartValue) || !validTime.matches(smartFlowEveningEndValue) || smartFlowEveningStartValue == smartFlowEveningEndValue ->
+                toast("Evening Flow : horaires invalides")
+            !validTime.matches(smartFlowNightStartValue) || !validTime.matches(smartFlowNightEndValue) || smartFlowNightStartValue == smartFlowNightEndValue ->
+                toast("Night Flow : horaires invalides")
+            !validTime.matches(smartFlowDayStartValue) || !validTime.matches(smartFlowDayEndValue) || smartFlowDayStartValue == smartFlowDayEndValue ->
+                toast("Day Flow : horaires invalides")
+            smartFlowEnabled.isChecked && smartFlowDays.none { it.isChecked } ->
+                toast("SmartFlow : sélectionne au moins un jour")
+            !validTime.matches(smartFlowStartValue) || !validTime.matches(smartFlowEndValue) || smartFlowStartValue == smartFlowEndValue ->
+                toast("SmartFlow : horaires invalides (HH:mm, début différent de fin)")
             saverCheck.isChecked && saverMinutes < 1 -> toast(tr(R.string.error_saver_delay))
             !(url.startsWith("http://") || url.startsWith("https://")) ->
                 toast(tr(R.string.error_url))
@@ -494,6 +662,25 @@ class SettingsActivity : Activity() {
                 prefs.sendspinEnabled = sendspinCheck.isChecked
                 ApiService.instance?.applySendspin()
                 prefs.calendarInDock = calendarCheck.isChecked
+                smartFlowConfig.activeDays = smartFlowDays.mapIndexedNotNull { index, check -> if (check.isChecked) index + 1 else null }.toSet()
+                smartFlowConfig.eveningStartTime = smartFlowEveningStartValue
+                smartFlowConfig.eveningEndTime = smartFlowEveningEndValue
+                smartFlowConfig.eveningEnabled = smartFlowEveningEnabled.isChecked
+                smartFlowConfig.nightStartTime = smartFlowNightStartValue
+                smartFlowConfig.nightEndTime = smartFlowNightEndValue
+                smartFlowConfig.nightEnabled = smartFlowNightEnabled.isChecked
+                smartFlowConfig.dayStartTime = smartFlowDayStartValue
+                smartFlowConfig.dayEndTime = smartFlowDayEndValue
+                smartFlowConfig.dayEnabled = smartFlowDayEnabled.isChecked
+                smartFlowConfig.startTime = smartFlowStartValue
+                smartFlowConfig.endTime = smartFlowEndValue
+                smartFlowConfig.weatherEnabled = smartFlowWeather.isChecked
+                smartFlowConfig.calendarEnabled = smartFlowCalendar.isChecked
+                smartFlowConfig.clockEnabled = smartFlowClock.isChecked
+                smartFlowConfig.trafficEnabled = smartFlowTraffic.isChecked
+                smartFlowConfig.trafficDestination = smartFlowDestination.text.toString()
+                smartFlowConfig.trafficSensor = smartFlowTrafficSensor.text.toString()
+                smartFlowConfig.enabled = smartFlowEnabled.isChecked
                 prefs.scheduleEnabled = scheduleCheck.isChecked
                 sleepField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.sleepTime = it }
                 wakeField.text.toString().trim().let { if (Regex("^\\d{1,2}[:hH]\\d{0,2}$").matches(it)) prefs.wakeTime = it }
