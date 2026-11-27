@@ -1,3 +1,6 @@
+## 🔑 Licence Pro
+Les fonctionnalités Pro (wake words, intercom, écran distant, kiosque complet…) nécessitent une licence disponible ici :  
+👉 [WallDock Pro sur Gumroad](https://becasseau.gumroad.com/l/walldock-pro) — €4,99 · 1 clé = 3 tablettes · essai gratuit 3 jours
 # WallDock
 
 **Transformez votre tablette Android en tableau de bord mural Home Assistant, avec Jarvis intégré.**
